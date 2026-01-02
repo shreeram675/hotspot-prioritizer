@@ -22,10 +22,11 @@ CREATE TABLE reports (
   category VARCHAR(50) NOT NULL,
   title VARCHAR(200),
   description TEXT,
-  image_url VARCHAR(255),
   location GEOMETRY(POINT,4326) NOT NULL,
   address VARCHAR(255),
   upvote_count INT DEFAULT 0,
+  severity VARCHAR(20) DEFAULT 'Medium',
+  road_importance INT DEFAULT 1,
   status VARCHAR(30) DEFAULT 'open',
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now()

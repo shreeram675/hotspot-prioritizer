@@ -54,6 +54,16 @@ const HotspotList = () => {
                         <option value="kmeans">K-Means Clustering</option>
                         <option value="grid">Grid Aggregation</option>
                     </select>
+                    <span className="inline-block group relative">
+                        <svg className="w-5 h-5 text-slate-400 hover:text-blue-600 cursor-help transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="invisible group-hover:visible absolute bottom-full right-0 mb-2 w-80 bg-slate-800 text-white text-xs rounded-lg p-3 shadow-xl z-50">
+                            <div className="font-semibold mb-1">How Clustering Works</div>
+                            <p className="text-slate-200">K-Means groups reports by spatial proximity. If you see "2 Reports" in separate blocks, it means those reports are in different locations (e.g., Street A vs Street B), not duplicates of each other.</p>
+                            <div className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
+                    </span>
                     <button
                         onClick={handleExport}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium active:scale-95"

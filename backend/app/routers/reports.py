@@ -150,13 +150,15 @@ def create_report(
 @router.post("/check-duplicates", response_model=list[dict])
 def check_duplicates_endpoint(
     description: str = Form(...),
+    lat: float = Form(None),
+    lon: float = Form(None),
     db: Session = Depends(database.get_db)
 ):
     """
-    Check for potential duplicates based on description.
-    Returns a list of similar reports.
+    Check for potential duplicates based on description AND location.
+    Returns a list of similar reports within 50m or globally if no location.
     """
-    duplicates = check_duplicate(db, description)
+    duplicates = check_duplicate(db, description, lat, lon)
     return duplicates
 
 @router.post("/{report_id}/upvote", response_model=dict)

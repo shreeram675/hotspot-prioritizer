@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import MiniMap from './MiniMap';
+import ReportDetailModal from './ReportDetailModal';
 
 // Component for submitting new reports
 const ReportForm = () => {
@@ -13,7 +14,9 @@ const ReportForm = () => {
         lon: '',
         image: null
     });
-    const [nearbyReports, setNearbyReports] = useState([]);
+    const [nearbyReports, setNearbyReports] = useState([]); // Duplicates
+    const [allNearbyReports, setAllNearbyReports] = useState([]); // All nearby (non-duplicates)
+    const [selectedReport, setSelectedReport] = useState(null); // For modal
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const [message, setMessage] = useState('');
@@ -102,24 +105,74 @@ const ReportForm = () => {
         }
     }, []);
 
-    // Check for duplicates when lat/lon changes
+    // Check for duplicates when lat/lon, title, or description changes
     useEffect(() => {
-        if (formData.lat && formData.lon) {
-            checkDuplicates();
-        } else {
-            setNearbyReports([]); // Clear duplicates if location is not set
-        }
-    }, [formData.lat, formData.lon]);
+        const timer = setTimeout(() => {
+            if ((formData.lat && formData.lon) || (formData.title || formData.description)) {
+                checkDuplicates();
+            } else {
+                setNearbyReports([]);
+            }
+        }, 800); // 800ms debounce
+
+        return () => clearTimeout(timer);
+    }, [formData.lat, formData.lon, formData.title, formData.description]);
 
     const checkDuplicates = async () => {
+        // If no text, we might want to skip or just show nearby? 
+        // For now, let's enforce at least some text or location.
+        // Backend `check_duplicate` requires `description` to be non-empty to run NLP, 
+        // BUT I modified it: "if not description: return []".
+        // Use title as description if description is empty.
+        const textToCheck = (formData.title + " " + formData.description).trim();
+
+        if (!textToCheck) {
+            // If no text, strictly speaking we can't do "Duplicate Detection" per new logic.
+            // We could fall back to /nearby if we wanted "Context nearby", but let's stick to the requested "Duplicate" feature.
+            setNearbyReports([]);
+            return;
+        }
+
         try {
-            const response = await axios.get('http://localhost:8000/reports/nearby', {
-                params: { lat: formData.lat, lon: formData.lon, radius_m: 200 }
-            });
-            setNearbyReports(response.data);
+            const data = new FormData();
+            data.append('description', textToCheck);
+            if (formData.lat) data.append('lat', formData.lat);
+            if (formData.lon) data.append('lon', formData.lon);
+
+            const response = await axios.post('http://localhost:8000/reports/check-duplicates', data);
+            const duplicates = response.data;
+            setNearbyReports(duplicates);
+
+            // Also fetch all nearby reports (not just duplicates)
+            if (formData.lat && formData.lon) {
+                fetchAllNearby(duplicates);
+            }
         } catch (error) {
             console.error("Error checking duplicates:", error);
-            setMessage('Error checking for nearby reports.');
+            // Don't show error to user constantly
+        }
+    };
+
+    const fetchAllNearby = async (duplicates = []) => {
+        try {
+            const response = await axios.get('http://localhost:8000/reports/nearby', {
+                params: { lat: formData.lat, lon: formData.lon, radius_m: 100 }
+            });
+            // Filter out duplicates already shown
+            const duplicateIds = duplicates.map(d => d.report_id);
+            setAllNearbyReports(response.data.filter(r => !duplicateIds.includes(r.report_id)));
+        } catch (error) {
+            console.error("Error fetching nearby reports:", error);
+        }
+    };
+
+    const viewReportDetails = async (reportId) => {
+        try {
+            const response = await axios.get(`http://localhost:8000/reports/${reportId}`);
+            setSelectedReport(response.data);
+        } catch (error) {
+            console.error("Error fetching report details:", error);
+            setMessage('Error loading report details.');
         }
     };
 
@@ -214,6 +267,7 @@ const ReportForm = () => {
                     </div>
                 )}
 
+                {/* Similar Reports (Duplicates) */}
                 {nearbyReports.length > 0 && (
                     <div className="mb-8 bg-yellow-50 border border-yellow-100 p-6 rounded-xl shadow-sm">
                         <h3 className="font-bold text-yellow-800 mb-3 flex items-center">
@@ -221,21 +275,70 @@ const ReportForm = () => {
                             Similar Reports Nearby
                         </h3>
                         <p className="text-sm text-yellow-700 mb-4">
-                            We found similar reports in this area. You can upvote them instead of creating a duplicate.
+                            We found similar reports in this area. Click to view details or upvote instead of creating a duplicate.
                         </p>
                         <div className="space-y-3">
                             {nearbyReports.map(dup => (
-                                <div key={dup.report_id} className="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow">
-                                    <div>
-                                        <span className="font-semibold text-slate-800 block">{dup.title}</span>
-                                        <span className="text-xs text-slate-500">Distance: {Math.round(dup.distance_m)}m</span>
+                                <div
+                                    key={dup.report_id}
+                                    className="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                                    onClick={() => viewReportDetails(dup.report_id)}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex-1">
+                                            <span className="font-semibold text-slate-800 block">{dup.title}</span>
+                                            <div className="flex gap-3 mt-1 text-xs text-slate-500">
+                                                <span>Distance: {Math.round(dup.distance_m)}m</span>
+                                                <span>•</span>
+                                                <span>Similarity: {Math.round(dup.similarity * 100)}%</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleUpvote(dup.report_id); }}
+                                            className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200 transition-colors"
+                                        >
+                                            Upvote ({dup.upvote_count})
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => handleUpvote(dup.report_id)}
-                                        className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200 transition-colors"
-                                    >
-                                        Upvote ({dup.upvote_count})
-                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Other Reports Nearby (Non-duplicates) */}
+                {allNearbyReports.length > 0 && (
+                    <div className="mb-8 bg-blue-50 border border-blue-100 p-6 rounded-xl shadow-sm">
+                        <h3 className="font-bold text-blue-800 mb-3 flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            Other Reports Nearby
+                        </h3>
+                        <p className="text-sm text-blue-700 mb-4">
+                            These reports are within 100m but may be different issues. Click to view details.
+                        </p>
+                        <div className="space-y-3">
+                            {allNearbyReports.map(report => (
+                                <div
+                                    key={report.report_id}
+                                    className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                                    onClick={() => viewReportDetails(report.report_id)}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex-1">
+                                            <span className="font-semibold text-slate-800 block">{report.title}</span>
+                                            <div className="flex gap-3 mt-1 text-xs text-slate-500">
+                                                <span>Distance: {Math.round(report.distance_m)}m</span>
+                                                <span>•</span>
+                                                <span className="px-2 py-0.5 bg-slate-100 rounded">{report.category}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleUpvote(report.report_id); }}
+                                            className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-200 transition-colors"
+                                        >
+                                            Upvote ({report.upvote_count})
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -392,6 +495,13 @@ const ReportForm = () => {
                     </button>
                 </form>
             </div>
+            {/* Report Detail Modal */}
+            {selectedReport && (
+                <ReportDetailModal
+                    report={selectedReport}
+                    onClose={() => setSelectedReport(null)}
+                />
+            )}
         </div>
     );
 };

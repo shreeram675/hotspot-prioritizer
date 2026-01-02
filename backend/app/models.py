@@ -24,7 +24,6 @@ class Report(Base):
     category = Column(String(50), nullable=False)
     title = Column(String(200))
     description = Column(Text)
-    description = Column(Text)
     # image_url removed in favor of ReportImage table
     # SRID 4326 is WGS 84 (standard lat/lon)
     location = Column(Geometry(geometry_type='POINT', srid=4326), nullable=False)
