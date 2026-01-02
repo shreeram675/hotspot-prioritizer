@@ -6,8 +6,13 @@ from transformers import pipeline
 from typing import Dict, List
 import re
 
-# Singleton sentiment analyzer
+# Singleton analyzers
 _sentiment_analyzer = None
+_risk_analyzer = None
+
+# Risk Detection Candidate Labels
+RISK_CONDITIONS = ["fire hazard", "blocked road", "medical waste", "toxic chemical", "overflowing garbage"]
+
 
 # Urgency keywords with severity weights
 URGENCY_KEYWORDS = {
@@ -47,6 +52,20 @@ def get_sentiment_analyzer():
         )
         print("Sentiment analyzer loaded successfully")
     return _sentiment_analyzer
+
+def get_risk_analyzer():
+    """Load and cache zero-shot classification model for risk detection"""
+    global _risk_analyzer
+    if _risk_analyzer is None:
+        print("Loading Zero-Shot Risk Analyzer...")
+        # Using a lightweight distilbert MNLI model for zero-shot classification
+        _risk_analyzer = pipeline(
+            "zero-shot-classification",
+            model="typeform/distilbert-base-uncased-mnli",
+            device=-1  # CPU
+        )
+        print("Risk analyzer loaded successfully")
+    return _risk_analyzer
 
 def extract_urgency_keywords(text: str) -> List[Dict]:
     """
@@ -125,12 +144,10 @@ def analyze_text_sentiment(description: str) -> Dict:
         description: User-provided report description
     
     Returns:
-        Dict containing:
-        - sentiment_score: 0-1 (higher = more negative/urgent)
-        - emotion: angry/concerned/neutral/positive
-        - urgency_level: critical/high/medium/low
         - keywords: List of urgency keywords found
         - severity_boost: Points to add to severity (0-30)
+        - risk_class: Detected risk category (NLP)
+        - risk_score: Confidence of risk detection (0-1)
     """
     if not description or len(description.strip()) < 5:
         # Too short or empty
@@ -139,50 +156,68 @@ def analyze_text_sentiment(description: str) -> Dict:
             'emotion': 'neutral',
             'urgency_level': 'low',
             'keywords': [],
-            'severity_boost': 0
+            'severity_boost': 0,
+            'risk_class': 'none',
+            'risk_score': 0.0
         }
     
     try:
-        # Run sentiment analysis
-        analyzer = get_sentiment_analyzer()
+        # 1. Run Sentiment Analysis
+        sentiment_analyzer = get_sentiment_analyzer()
+        text = description[:500] # Truncate
         
-        # Truncate to 512 tokens if needed
-        text = description[:500]
+        sent_result = sentiment_analyzer(text)[0]
         
-        result = analyzer(text)[0]
-        
-        # Convert to urgency score (0-1, where 1 is most urgent)
-        # NEGATIVE sentiment with high confidence = high urgency
-        if result['label'] == 'NEGATIVE':
-            sentiment_score = result['score']
+        if sent_result['label'] == 'NEGATIVE':
+            sentiment_score = sent_result['score']
         else:
-            sentiment_score = 1 - result['score']  # Invert positive sentiment
+            sentiment_score = 1 - sent_result['score']
+            
+        # 2. Run Zero-Shot Risk Analysis
+        risk_analyzer = get_risk_analyzer()
+        risk_result = risk_analyzer(
+            text, 
+            candidate_labels=RISK_CONDITIONS,
+            multi_label=False
+        )
         
-        # Extract urgency keywords
+        top_risk = risk_result['labels'][0]
+        top_score = risk_result['scores'][0]
+        
+        # Only count as risk if confidence is high (>0.6)
+        detected_risk = top_risk if top_score > 0.6 else "none"
+        
+        # 3. Extract Keywords (Legacy support + specific boosting)
         keywords = extract_urgency_keywords(description)
         
-        # Detect emotion
-        emotion = detect_emotion_category(result)
+        # 4. Detect Emotion
+        emotion = detect_emotion_category(sent_result)
         
-        # Calculate severity boost
+        # 5. Calculate Severity Boost (Combined NLP + Keywords)
         severity_boost = calculate_text_severity_boost(keywords, sentiment_score)
         
-        # Determine urgency level
-        if severity_boost >= 25 or (keywords and keywords[0]['weight'] >= 25):
+        # Add boost for high-confidence risk detection
+        if detected_risk != "none":
+            severity_boost = min(severity_boost + 10, 30)
+        
+        # Determine Urgency Level
+        if severity_boost >= 25 or detected_risk in ["fire hazard", "medical waste"]:
             urgency_level = 'critical'
-        elif severity_boost >= 18 or sentiment_score > 0.8:
+        elif severity_boost >= 18:
             urgency_level = 'high'
-        elif severity_boost >= 10 or sentiment_score > 0.5:
+        elif severity_boost >= 10:
             urgency_level = 'medium'
         else:
             urgency_level = 'low'
-        
+            
         return {
             'sentiment_score': round(sentiment_score, 3),
             'emotion': emotion,
             'urgency_level': urgency_level,
-            'keywords': [kw['keyword'] for kw in keywords[:5]],  # Top 5 keywords
-            'severity_boost': severity_boost
+            'keywords': [kw['keyword'] for kw in keywords[:5]],
+            'severity_boost': severity_boost,
+            'risk_class': detected_risk,
+            'risk_score': round(top_score, 3)
         }
         
     except Exception as e:
@@ -193,5 +228,7 @@ def analyze_text_sentiment(description: str) -> Dict:
             'emotion': 'neutral',
             'urgency_level': 'low',
             'keywords': [],
-            'severity_boost': 0
+            'severity_boost': 0,
+            'risk_class': 'none',
+            'risk_score': 0.0
         }

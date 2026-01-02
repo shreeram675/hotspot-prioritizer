@@ -79,12 +79,17 @@ class SeverityScorer:
             location_multiplier = location_context_result.get('priority_multiplier', 1.0)
             zone_type = location_context_result.get('zone_type', 'commercial')
         
-        # Extract text sentiment
+        # Extract text sentiment and risk
         text_boost = 0
         urgency_level = 'low'
+        risk_class = 'none'
+        nlp_risk_score = 0.0
+        
         if text_analysis_result:
             text_boost = text_analysis_result.get('severity_boost', 0)
             urgency_level = text_analysis_result.get('urgency_level', 'low')
+            risk_class = text_analysis_result.get('risk_class', 'none')
+            nlp_risk_score = text_analysis_result.get('risk_score', 0.0)
         
         # === COMPONENT SCORE CALCULATIONS ===
         
@@ -126,11 +131,19 @@ class SeverityScorer:
             social_score = min((math.log(upvote_count + 1) / math.log(100)) * 100, 100)
         
         # 5. Risk Factors Score (0-100)
+        # 5. Risk Factors Score (0-100)
+        # Combine physical risk (overflow/dump) with NLP risk
         risk_score = 0
-        if has_overflow:
-            risk_score += 50
-        if is_open_dump:
-            risk_score += 50
+        # Physical risks
+        if has_overflow: risk_score += 40
+        if is_open_dump: risk_score += 40
+        
+        # NLP detected risks
+        if risk_class != 'none' and nlp_risk_score > 0.6:
+            risk_score += 30  # Add 30 points for confirmed NLP risk
+            if risk_class in ['fire hazard', 'toxic chemical', 'medical waste']:
+                risk_score += 20  # Additional boost for dangerous risks
+        
         risk_score = min(risk_score, 100)
         
         # === WEIGHTED FUSION ===
@@ -187,7 +200,9 @@ class SeverityScorer:
             text_analysis_result,
             upvote_count,
             has_overflow,
-            is_open_dump
+            has_overflow,
+            is_open_dump,
+            risk_class
         )
         
         return {
@@ -225,7 +240,10 @@ class SeverityScorer:
         text_analysis: Optional[Dict],
         upvotes: int,
         overflow: bool,
-        open_dump: bool
+        upvotes: int,
+        overflow: bool,
+        open_dump: bool,
+        risk_class: str = 'none'
     ) -> str:
         """Generate comprehensive human-readable explanation"""
         
@@ -282,6 +300,9 @@ class SeverityScorer:
         # Risk factors
         if open_dump:
             parts.append("⚠️ OPEN DUMP DETECTED - Requires immediate attention.")
+        
+        if risk_class != 'none' and risk_class != 'general waste':
+            parts.append(f"⚠️ Risk Detected: {risk_class.upper()}.")
         elif overflow:
             parts.append("⚠️ Potential overflow or heavy accumulation detected.")
         
