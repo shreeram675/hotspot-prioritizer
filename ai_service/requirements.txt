@@ -6,3 +6,8 @@ torchvision==0.21.0
 --extra-index-url https://download.pytorch.org/whl/cpu
 pillow
 numpy
+ultralytics
+opencv-python-headless
+transformers
+sentencepiece
+requests

@@ -58,48 +58,100 @@ def create_report(
         road_importance=road_importance
     )
 
-    # ML: Predict Severity if image exists
-    # ML: Predict Severity & Category using AI Service (Microservice)
+    # ML: Predict Severity & Category using AI Service with Context
     ai_severity = None
     ai_category = None
+    ai_analysis_data = {}
+    location_context_data = None
+    text_sentiment_data = None
     
     if image_url:
         try:
-            # Call AI Service
-            # We need to read the file again or use the bytes. 
-            # Since we saved it to disk, let's read it back.
+            # Call AI Service for comprehensive severity analysis with context
             with open(file_path, "rb") as f:
                 img_bytes = f.read()
                 
             files = {'file': (filename, img_bytes, 'image/jpeg')}
             
-            # Internal Docker URL for AI Service
-            ai_url = "http://ai_service:8000/detect"
+            # Prepare context data for AI service
+            data = {
+                'lat': lat,
+                'lon': lon,
+                'description': description or '',
+                'upvote_count': 0  # Will be updated as upvotes come in
+            }
             
-            # Using httpx synchronously here for simplicity, ideally async
-            # Timeout is important
-            with httpx.Client(timeout=5.0) as client:
-                resp = client.post(ai_url, files=files)
-                
-            if resp.status_code == 200:
-                result = resp.json()
-                result = resp.json()
-                # If object detected, override category and severity
-                if result.get("is_garbage"):
-                    # distinguish based on detected_category
-                    cat = result.get("detected_category")
-                    if cat == "Pothole":
-                         ai_category = "Pothole / Road Defect"
-                    else:
-                         ai_category = "Garbage / Sanitation"
-                         
-                    print(f"AI: {cat} detected ({result.get('garbage_type')} - {result.get('confidence')})")
+            # Try new severity analysis endpoint with context
+            ai_url = "http://ai_service:8000/analyze-severity"
+            
+            with httpx.Client(timeout=15.0) as client:  # Increased timeout for NLP + location
+                try:
+                    resp = client.post(ai_url, files=files, data=data)
                     
-                    # Logic: High confidence (>0.8) -> High, else Medium
-                    if result.get("confidence", 0) > 0.8:
-                        ai_severity = "High"
-                    else:
-                        ai_severity = "Medium"
+                    if resp.status_code == 200:
+                        result = resp.json()
+                        
+                        # Extract comprehensive AI analysis
+                        ai_analysis_data = {
+                            'severity_score': result.get('severity_score'),
+                            'severity_category': result.get('severity_category'),
+                            'object_count': result.get('object_detection', {}).get('object_count'),
+                            'coverage_area': result.get('object_detection', {}).get('coverage_area'),
+                            'scene_dirtiness': result.get('scene_classification', {}).get('dirtiness_score'),
+                            'confidence_explanation': result.get('explanation')
+                        }
+                        
+                        # Extract location context if available
+                        if 'location_context' in result:
+                            location_context_data = result['location_context']
+                        
+                        # Extract text sentiment if available
+                        if 'text_analysis' in result:
+                            text_sentiment_data = result['text_analysis']
+                        
+                        # Extract waste classification if available
+                        waste_classification_data = result.get('waste_classification')
+                        
+                        # Map AI severity category to our severity levels
+                        ai_cat = result.get('severity_category')
+                        if ai_cat in ['Extreme', 'High']:
+                            ai_severity = 'High'
+                        elif ai_cat == 'Medium':
+                            ai_severity = 'Medium'
+                        else:
+                            ai_severity = 'Low'
+                        
+                        # Determine category based on detections
+                        obj_detection = result.get('object_detection', {})
+                        if obj_detection.get('object_count', 0) > 0:
+                            ai_category = "Garbage / Sanitation"
+                        
+                        print(f"AI Severity Analysis: {ai_cat} (Score: {result.get('severity_score')})")
+                        if location_context_data:
+                            print(f"  Location Priority: {location_context_data.get('priority_multiplier')}x ({location_context_data.get('zone_type')})")
+                        if text_sentiment_data:
+                            print(f"  Text Urgency: {text_sentiment_data.get('urgency_level')}")
+                        
+                except Exception as e:
+                    print(f"New AI endpoint failed, falling back to legacy: {e}")
+                    # Fallback to legacy /detect endpoint
+                    ai_url_legacy = "http://ai_service:8000/detect"
+                    resp = client.post(ai_url_legacy, files={'file': (filename, img_bytes, 'image/jpeg')})
+                    
+                    if resp.status_code == 200:
+                        result = resp.json()
+                        if result.get("is_garbage"):
+                            cat = result.get("detected_category")
+                            if cat == "Pothole":
+                                ai_category = "Pothole / Road Defect"
+                            else:
+                                ai_category = "Garbage / Sanitation"
+                            
+                            if result.get("confidence", 0) > 0.8:
+                                ai_severity = "High"
+                            else:
+                                ai_severity = "Medium"
+                                
         except Exception as e:
             print(f"AI Service Error: {e}")
 
@@ -116,6 +168,34 @@ def create_report(
         new_report.severity = predict_severity(abs_path)
     else:
         new_report.severity = "Medium" # Default
+    
+    # Store AI analysis data if available
+    if ai_analysis_data:
+        new_report.ai_severity_score = ai_analysis_data.get('severity_score')
+        new_report.ai_severity_category = ai_analysis_data.get('severity_category')
+        new_report.ai_object_count = ai_analysis_data.get('object_count')
+        new_report.ai_coverage_area = ai_analysis_data.get('coverage_area')
+        new_report.ai_scene_dirtiness = ai_analysis_data.get('scene_dirtiness')
+        new_report.ai_confidence_explanation = ai_analysis_data.get('confidence_explanation')
+    
+    # Store location context data if available
+    if location_context_data:
+        new_report.location_context = location_context_data
+        new_report.location_priority_multiplier = location_context_data.get('priority_multiplier', 1.0)
+    
+    # Store text sentiment data if available
+    if text_sentiment_data:
+        new_report.text_sentiment_score = text_sentiment_data.get('sentiment_score')
+        new_report.text_urgency_keywords = ', '.join(text_sentiment_data.get('keywords', []))
+        new_report.text_emotion_category = text_sentiment_data.get('emotion')
+    
+    # Store waste classification data if available
+    if 'waste_classification_data' in locals() and waste_classification_data:
+        new_report.waste_primary_type = waste_classification_data.get('primary_type')
+        new_report.waste_composition = waste_classification_data.get('waste_composition')
+        new_report.is_hazardous_waste = waste_classification_data.get('is_hazardous', False)
+        recommendations = waste_classification_data.get('recommendations', [])
+        new_report.waste_disposal_recommendations = '; '.join(recommendations) if recommendations else None
     
     db.add(new_report)
     db.commit()

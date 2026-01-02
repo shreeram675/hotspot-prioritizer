@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func, Float, Boolean
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from .database import Base
@@ -32,6 +33,30 @@ class Report(Base):
     severity = Column(String(20), default="Medium") # Low, Medium, High
     road_importance = Column(Integer, default=1) # 1=Street, 5=Main Road, 10=Highway
     status = Column(String(30), default="open")
+    
+    # AI Severity Analysis Fields
+    ai_severity_score = Column(Integer)  # 0-100 score from AI analysis
+    ai_severity_category = Column(String(20))  # Clean/Low/Medium/High/Extreme
+    ai_object_count = Column(Integer)  # Number of garbage objects detected
+    ai_coverage_area = Column(Float)  # Garbage coverage ratio (0-1)
+    ai_scene_dirtiness = Column(Float)  # Scene dirtiness score (0-1)
+    ai_confidence_explanation = Column(Text)  # Human-readable explanation
+    
+    # Location Context Fields
+    location_context = Column(JSONB)  # Nearby sensitive locations
+    location_priority_multiplier = Column(Float, default=1.0)  # 0.9-1.5x
+    
+    # Text Sentiment Analysis Fields
+    text_sentiment_score = Column(Float)  # 0-1 sentiment score
+    text_urgency_keywords = Column(Text)  # Comma-separated keywords
+    text_emotion_category = Column(String(50))  # angry/concerned/neutral
+    
+    # Waste Type Classification Fields
+    waste_primary_type = Column(String(50))  # hazardous/wet/dry/recyclable/e_waste/other
+    waste_composition = Column(JSONB)  # Percentage breakdown of waste types
+    is_hazardous_waste = Column(Boolean, default=False)  # Hazardous waste flag
+    waste_disposal_recommendations = Column(Text)  # Disposal recommendations
+    
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
