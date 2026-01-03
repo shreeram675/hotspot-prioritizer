@@ -45,6 +45,8 @@ class ReportResponse(ReportBase):
     lon: float # Added
     road_importance: int # Added
     upvote_count: int
+    ai_severity_score: Optional[float] = None
+    ai_severity_category: Optional[str] = None
     status: str
     created_at: datetime
     is_upvoted: Optional[bool] = False # Changed to Optional

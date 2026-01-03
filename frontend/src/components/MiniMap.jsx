@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import LocationSearch from './LocationSearch';
 
 // Custom marker icons
 const createIcon = (color) => {
@@ -64,7 +65,7 @@ const MapClickHandler = ({ onLocationClick }) => {
     return null;
 };
 
-const MiniMap = ({ lat, lon, userLocation, onLocationChange }) => {
+const MiniMap = ({ lat, lon, userLocation, onLocationChange, showSearch = true }) => {
     // Use provided coords or default
     const center = (lat && lon) ? [lat, lon] : (userLocation || [51.505, -0.09]);
     const reportPosition = (lat && lon) ? [lat, lon] : center;
@@ -75,13 +76,26 @@ const MiniMap = ({ lat, lon, userLocation, onLocationChange }) => {
 
     return (
         <div className="w-full h-80 rounded-xl overflow-hidden border-2 border-slate-200 shadow-md relative">
+            {/* Search Bar Overlay */}
+            {showSearch && (
+                <div className="absolute top-3 right-3 z-[1000] w-64 pointer-events-none">
+                    <div className="pointer-events-auto">
+                        <LocationSearch
+                            onLocationSelect={(lat, lon) => {
+                                onLocationChange(lat, lon);
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Instructions overlay */}
-            <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-xs">
+            <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-xs pointer-events-none">
                 <p className="font-semibold text-slate-700 flex items-center gap-1.5">
                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Click map or drag blue marker to set location
+                    Click, drag, or search to set location
                 </p>
             </div>
 

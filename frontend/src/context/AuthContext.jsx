@@ -36,11 +36,11 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const formData = new FormData();
-            formData.append('username', email);
-            formData.append('password', password);
+            const params = new URLSearchParams();
+            params.append('username', email);
+            params.append('password', password);
 
-            const response = await axios.post('http://localhost:8000/auth/login', formData);
+            const response = await axios.post('http://localhost:8000/auth/login', params);
             const { access_token, role } = response.data;
 
             localStorage.setItem('token', access_token);

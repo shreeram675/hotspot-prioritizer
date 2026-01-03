@@ -82,7 +82,8 @@ def create_report(
             }
             
             # Try new severity analysis endpoint with context
-            ai_url = "http://ai_service:8000/analyze-severity"
+            ai_service_host = os.getenv("AI_SERVICE_URL", "http://localhost:8001")
+            ai_url = f"{ai_service_host}/analyze-severity"
             
             with httpx.Client(timeout=15.0) as client:  # Increased timeout for NLP + location
                 try:
@@ -135,7 +136,7 @@ def create_report(
                 except Exception as e:
                     print(f"New AI endpoint failed, falling back to legacy: {e}")
                     # Fallback to legacy /detect endpoint
-                    ai_url_legacy = "http://ai_service:8000/detect"
+                    ai_url_legacy = f"{ai_service_host}/detect"
                     resp = client.post(ai_url_legacy, files={'file': (filename, img_bytes, 'image/jpeg')})
                     
                     if resp.status_code == 200:
@@ -426,7 +427,7 @@ def get_reports(
     if status:
         query = query.filter(models.Report.status == status)
         
-    reports = query.offset(skip).limit(limit).all()
+    reports = query.order_by(models.Report.created_at.desc()).offset(skip).limit(limit).all()
     
     # Enrich with is_upvoted
     upvoted_ids = set()
@@ -443,14 +444,16 @@ def get_reports(
             "title": r.title,
             "category": r.category,
             "description": r.description,
-            "lat": to_shape(r.location).y,
-            "lon": to_shape(r.location).x,
+            "lat": to_shape(r.location).y if r.location is not None else 0.0,
+            "lon": to_shape(r.location).x if r.location is not None else 0.0,
             "images": [img.file_path for img in r.images],
             "upvote_count": r.upvote_count,
             "status": r.status,
             "created_at": r.created_at,
             "is_upvoted": r.report_id in upvoted_ids,
-            "road_importance": r.road_importance
+            "road_importance": r.road_importance or 1,
+            "ai_severity_score": r.ai_severity_score,
+            "ai_severity_category": r.ai_severity_category
         }
         results.append(r_dict)
         

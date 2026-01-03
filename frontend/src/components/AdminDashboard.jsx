@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import AnalyticsWidgets from './AnalyticsWidgets';
+import ReportDetailModal from './ReportDetailModal';
 
 const AdminDashboard = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedReport, setSelectedReport] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all'); // all, open, in_progress, resolved
+    const [sortBy, setSortBy] = useState('date_desc'); // date_desc, date_asc, severity_desc, severity_asc
 
     useEffect(() => {
         fetchReports();
@@ -28,6 +31,17 @@ const AdminDashboard = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const getSortedReports = () => {
+        const sorted = [...reports];
+        return sorted.sort((a, b) => {
+            if (sortBy === 'date_desc') return new Date(b.created_at) - new Date(a.created_at);
+            if (sortBy === 'date_asc') return new Date(a.created_at) - new Date(b.created_at);
+            if (sortBy === 'severity_desc') return (b.ai_severity_score || 0) - (a.ai_severity_score || 0);
+            if (sortBy === 'severity_asc') return (a.ai_severity_score || 0) - (b.ai_severity_score || 0);
+            return 0;
+        });
     };
 
     const handleStatusUpdate = async (reportId, newStatus) => {
@@ -65,21 +79,37 @@ const AdminDashboard = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-8 relative z-10">
                 <h1 className="text-3xl font-bold text-slate-900">Issue Management</h1>
-                <div className="flex space-x-2">
-                    {['all', 'open', 'in_progress', 'resolved'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setFilterStatus(status)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${filterStatus === status
-                                ? 'bg-blue-600 text-white shadow-md'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-                                }`}
+                <div className="flex gap-4">
+                    {/* Sort Dropdown */}
+                    <div className="relative">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 shadow-sm"
                         >
-                            {status.replace('_', ' ')}
-                        </button>
-                    ))}
+                            <option value="date_desc">Recent First</option>
+                            <option value="date_asc">Oldest First</option>
+                            <option value="severity_desc">Highest Severity</option>
+                            <option value="severity_asc">Lowest Severity</option>
+                        </select>
+                    </div>
+
+                    <div className="flex space-x-2">
+                        {['all', 'open', 'in_progress', 'resolved'].map(status => (
+                            <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${filterStatus === status
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                                    }`}
+                            >
+                                {status.replace('_', ' ')}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -92,6 +122,7 @@ const AdminDashboard = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Issue</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Score</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Upvotes</th>
@@ -100,15 +131,23 @@ const AdminDashboard = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
                             {loading ? (
-                                <tr><td colSpan="6" className="px-6 py-10 text-center text-slate-500">Loading...</td></tr>
+                                <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">Loading...</td></tr>
                             ) : reports.length === 0 ? (
-                                <tr><td colSpan="6" className="px-6 py-10 text-center text-slate-500">No reports found</td></tr>
-                            ) : reports.map((report) => (
+                                <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">No reports found</td></tr>
+                            ) : getSortedReports().map((report) => (
                                 <tr key={report.report_id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">#{report.report_id}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-slate-900">{report.title}</div>
+                                    <td className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => setSelectedReport(report)}>
+                                        <div className="text-sm font-medium text-blue-600 hover:underline">{report.title}</div>
                                         <div className="text-sm text-slate-500 truncate max-w-xs">{report.description}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${(report.ai_severity_score || 0) >= 75 ? 'bg-red-100 text-red-800' :
+                                            (report.ai_severity_score || 0) >= 50 ? 'bg-orange-100 text-orange-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                            {report.ai_severity_score || 0}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{report.category}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -145,7 +184,18 @@ const AdminDashboard = () => {
                     </table>
                 </div>
             </div>
-        </div>
+
+
+            {/* Detail Modal */}
+            {
+                selectedReport && (
+                    <ReportDetailModal
+                        report={selectedReport}
+                        onClose={() => setSelectedReport(null)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

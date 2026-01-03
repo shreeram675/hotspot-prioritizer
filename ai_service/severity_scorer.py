@@ -200,7 +200,6 @@ class SeverityScorer:
             text_analysis_result,
             upvote_count,
             has_overflow,
-            has_overflow,
             is_open_dump,
             risk_class
         )
@@ -238,8 +237,6 @@ class SeverityScorer:
         dirtiness: float,
         location_context: Optional[Dict],
         text_analysis: Optional[Dict],
-        upvotes: int,
-        overflow: bool,
         upvotes: int,
         overflow: bool,
         open_dump: bool,

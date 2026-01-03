@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import MiniMap from './MiniMap';
 import ReportDetailModal from './ReportDetailModal';
+import LocationSearch from './LocationSearch';
 
 // Component for submitting new reports
 const ReportForm = () => {
@@ -64,27 +65,75 @@ const ReportForm = () => {
     };
 
     const getLocation = () => {
-        if (navigator.geolocation) {
-            setMessage('Fetching location...');
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setFormData({
-                        ...formData,
-                        lat: position.coords.latitude,
-                        lon: position.coords.longitude
-                    });
-                    setMessage('Location updated!');
-                    setTimeout(() => setMessage(''), 2000);
-                },
-                (error) => {
-                    console.error("Geolocation error:", error);
-                    setMessage("Error: Could not fetch location. Please ensure GPS is enabled.");
-                },
-                { enableHighAccuracy: true }
-            );
-        } else {
+        if (!navigator.geolocation) {
             setMessage("Error: Geolocation not supported.");
+            return;
         }
+
+        setMessage('Fetching precise location (please wait)...');
+        let bestAccuracy = Infinity;
+        let watchId = null;
+        let timeoutId = null;
+
+        const stopLocationWatch = () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (timeoutId !== null) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+        };
+
+        // Timeout after 15 seconds
+        timeoutId = setTimeout(() => {
+            stopLocationWatch();
+            if (bestAccuracy === Infinity) {
+                setMessage("Could not get a high-accuracy location. Please try manually moving the pin.");
+            } else {
+                setMessage(`Location updated! (Accuracy: ${Math.round(bestAccuracy)}m)`);
+                setTimeout(() => setMessage(''), 3000);
+            }
+        }, 15000);
+
+        watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // Update if this new position is more accurate or if we haven't set one yet
+                if (accuracy < bestAccuracy) {
+                    bestAccuracy = accuracy;
+                    setFormData(prev => ({
+                        ...prev,
+                        lat: latitude,
+                        lon: longitude
+                    }));
+
+                    // User feedback
+                    setMessage(`Improving accuracy... (${Math.round(accuracy)}m)`);
+
+                    // If highly accurate (< 10m), we can stop early
+                    if (accuracy <= 10) {
+                        stopLocationWatch();
+                        setMessage(`Precise location found! (Accuracy: ${Math.round(accuracy)}m)`);
+                        setTimeout(() => setMessage(''), 3000);
+                    }
+                }
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                if (bestAccuracy === Infinity) {
+                    setMessage("Error: Could not fetch location. Ensure GPS is on.");
+                }
+                stopLocationWatch();
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
     };
 
     // Get user location on mount
@@ -367,9 +416,8 @@ const ReportForm = () => {
                                 onChange={handleChange}
                                 className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm bg-white"
                             >
-                                <option value="Infrastructure">Infrastructure</option>
-                                <option value="Safety">Safety</option>
                                 <option value="Sanitation">Sanitation</option>
+                                <option value="Roadways">Roadways</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -388,12 +436,17 @@ const ReportForm = () => {
 
                     <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                         <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
-                        <p className="text-xs text-slate-600 mb-4 flex items-start gap-2">
-                            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Click anywhere on the map to place your report, drag the blue marker to adjust, or use the button below to use your current location.</span>
+                        <p className="text-xs text-slate-600 mb-4">
+                            Search for an address or drag the marker to the exact location.
                         </p>
+
+                        {/* Search Component */}
+                        <div className="mb-4">
+                            <LocationSearch
+                                onLocationSelect={handleMapLocationChange}
+                                className="w-full"
+                            />
+                        </div>
 
                         {/* Mini Map */}
                         <div className="mb-4">
@@ -402,31 +455,17 @@ const ReportForm = () => {
                                 lon={parseFloat(formData.lon)}
                                 userLocation={userLocation}
                                 onLocationChange={handleMapLocationChange}
+                                showSearch={false}
                             />
                         </div>
 
-                        {/* Coordinate Fields */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <input
-                                type="number"
-                                name="lat"
-                                value={formData.lat}
-                                onChange={handleChange}
-                                placeholder="Latitude"
-                                step="any"
-                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-                                required
-                            />
-                            <input
-                                type="number"
-                                name="lon"
-                                value={formData.lon}
-                                onChange={handleChange}
-                                placeholder="Longitude"
-                                step="any"
-                                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-                                required
-                            />
+                        {/* Hidden Inputs for Form Submission */}
+                        <input type="hidden" name="lat" value={formData.lat} />
+                        <input type="hidden" name="lon" value={formData.lon} />
+
+                        <div className="flex justify-between items-center text-xs text-slate-500 mb-4 px-1">
+                            <span>Lat: {parseFloat(formData.lat || 0).toFixed(6)}</span>
+                            <span>Lon: {parseFloat(formData.lon || 0).toFixed(6)}</span>
                         </div>
 
                         <button
@@ -435,7 +474,7 @@ const ReportForm = () => {
                             className="w-full bg-white text-blue-600 border border-blue-200 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors flex justify-center items-center shadow-sm"
                         >
                             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            Use My Current Location
+                            Refine with My Current Location
                         </button>
                     </div>
 

@@ -44,6 +44,7 @@ const HeatmapLayer = ({ points }) => {
 };
 
 import UserLocationMarker from './UserLocationMarker';
+import LocationSearch from './LocationSearch';
 
 const MapView = () => {
     const [reports, setReports] = useState([]);
@@ -251,8 +252,19 @@ const MapView = () => {
             </MapContainer>
 
             {/* Controls */}
-            <div className="absolute top-20 right-4 z-[1000] flex flex-col gap-4">
-                <div className="bg-white p-2 rounded-lg shadow-lg border border-slate-200 flex flex-col gap-2">
+            <div className="absolute top-20 right-4 z-[1000] flex flex-col gap-4 items-end pointer-events-none">
+                {/* Search Bar - Pointer events auto to allow interaction */}
+                <div className="pointer-events-auto w-72">
+                    <LocationSearch
+                        onLocationSelect={(lat, lon) => {
+                            const newCenter = [lat, lon];
+                            setCenter(newCenter);
+                            fetchReports(lat, lon);
+                        }}
+                    />
+                </div>
+
+                <div className="bg-white p-2 rounded-lg shadow-lg border border-slate-200 flex flex-col gap-2 w-full pointer-events-auto">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Visualization</label>
                     <div className="flex bg-slate-100 rounded-lg p-1">
                         <button
@@ -276,7 +288,6 @@ const MapView = () => {
                     </div>
                 </div>
 
-                <MapLegend mode={vizMode} />
                 <MapLegend mode={vizMode} />
             </div>
 
