@@ -78,7 +78,7 @@ const MapView = () => {
                     setLocationError(errMsg);
                     setLocating(false);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
             );
         } else {
             setLocationError("Geolocation is not supported by your browser.");

@@ -86,7 +86,7 @@ const ReportForm = () => {
             }
         };
 
-        // Timeout after 15 seconds
+        // Timeout after 30 seconds
         timeoutId = setTimeout(() => {
             stopLocationWatch();
             if (bestAccuracy === Infinity) {
@@ -95,15 +95,17 @@ const ReportForm = () => {
                 setMessage(`Location updated! (Accuracy: ${Math.round(bestAccuracy)}m)`);
                 setTimeout(() => setMessage(''), 3000);
             }
-        }, 15000);
+        }, 30000);
 
         watchId = navigator.geolocation.watchPosition(
             (position) => {
                 const { latitude, longitude, accuracy } = position.coords;
+                console.log(`[GPS] New position: ${latitude}, ${longitude}, accuracy: ${accuracy}m`);
 
                 // Update if this new position is more accurate or if we haven't set one yet
                 if (accuracy < bestAccuracy) {
                     bestAccuracy = accuracy;
+                    console.log(`[GPS] Improved accuracy from ${Math.round(bestAccuracy)}m to ${Math.round(accuracy)}m`);
                     setFormData(prev => ({
                         ...prev,
                         lat: latitude,
@@ -130,27 +132,43 @@ const ReportForm = () => {
             },
             {
                 enableHighAccuracy: true,
-                timeout: 15000,
+                timeout: 30000,
                 maximumAge: 0
             }
         );
     };
 
-    // Get user location on mount
+    // Get user location on mount with high accuracy
     useEffect(() => {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const userPos = [position.coords.latitude, position.coords.longitude];
-                setUserLocation(userPos);
-                // Set initial report location to user location if not set
-                if (!formData.lat && !formData.lon) {
-                    setFormData({
-                        ...formData,
-                        lat: position.coords.latitude,
-                        lon: position.coords.longitude
-                    });
-                }
-            });
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userPos = [position.coords.latitude, position.coords.longitude];
+                    const accuracy = position.coords.accuracy;
+                    console.log(`[GPS] Initial location: ${userPos[0]}, ${userPos[1]}, accuracy: ${accuracy}m`);
+                    setUserLocation(userPos);
+
+                    // Set initial report location to user location if not set
+                    if (!formData.lat && !formData.lon) {
+                        setFormData({
+                            ...formData,
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        });
+
+                        // Show accuracy feedback
+                        if (accuracy > 100) {
+                            setMessage(`Location set (Accuracy: ${Math.round(accuracy)}m - Consider using "Refine with My Current Location" for better precision)`);
+                            setTimeout(() => setMessage(''), 5000);
+                        }
+                    }
+                },
+                (error) => {
+                    console.error("Initial location error:", error);
+                    // Don't show error to user, they can manually set location
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
     }, []);
 
@@ -459,13 +477,43 @@ const ReportForm = () => {
                             />
                         </div>
 
-                        {/* Hidden Inputs for Form Submission */}
-                        <input type="hidden" name="lat" value={formData.lat} />
-                        <input type="hidden" name="lon" value={formData.lon} />
+                        {/* Coordinate Display and Manual Edit */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
+                                <input
+                                    type="number"
+                                    step="0.000001"
+                                    name="lat"
+                                    value={formData.lat}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="12.9716"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">Longitude</label>
+                                <input
+                                    type="number"
+                                    step="0.000001"
+                                    name="lon"
+                                    value={formData.lon}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="77.5946"
+                                />
+                            </div>
+                        </div>
 
-                        <div className="flex justify-between items-center text-xs text-slate-500 mb-4 px-1">
-                            <span>Lat: {parseFloat(formData.lat || 0).toFixed(6)}</span>
-                            <span>Lon: {parseFloat(formData.lon || 0).toFixed(6)}</span>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <p className="text-xs text-blue-800">
+                                <strong>💡 Tip:</strong> If automatic location is inaccurate:
+                            </p>
+                            <ul className="text-xs text-blue-700 mt-1 ml-4 list-disc">
+                                <li>Use the <strong>address search</strong> above to find exact location</li>
+                                <li>Or <strong>drag the map marker</strong> to the correct position</li>
+                                <li>Or manually edit the coordinates above</li>
+                            </ul>
                         </div>
 
                         <button

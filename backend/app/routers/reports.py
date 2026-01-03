@@ -85,12 +85,18 @@ def create_report(
             ai_service_host = os.getenv("AI_SERVICE_URL", "http://localhost:8001")
             ai_url = f"{ai_service_host}/analyze-severity"
             
-            with httpx.Client(timeout=15.0) as client:  # Increased timeout for NLP + location
+            with httpx.Client(timeout=60.0) as client:  # Increased timeout for AI models (YOLO + NLP + location)
                 try:
+                    print(f\"[AI] Calling AI service at {ai_url} with image: {filename}")
+                    print(f\"[AI] Context data: lat={lat}, lon={lon}, desc_len={len(description or '')}, upvotes=0")
+                    
                     resp = client.post(ai_url, files=files, data=data)
+                    
+                    print(f\"[AI] Response status: {resp.status_code}")
                     
                     if resp.status_code == 200:
                         result = resp.json()
+                        print(f\"[AI] Success! Severity score: {result.get('severity_score')}, Category: {result.get('severity_category')}")
                         
                         # Extract comprehensive AI analysis
                         ai_analysis_data = {
@@ -133,28 +139,37 @@ def create_report(
                         if text_sentiment_data:
                             print(f"  Text Urgency: {text_sentiment_data.get('urgency_level')}")
                         
-                except Exception as e:
-                    print(f"New AI endpoint failed, falling back to legacy: {e}")
+                 except Exception as e:
+                    print(f"[AI] New AI endpoint failed: {type(e).__name__}: {str(e)}")
+                    print(f"[AI] Falling back to legacy /detect endpoint")
                     # Fallback to legacy /detect endpoint
                     ai_url_legacy = f"{ai_service_host}/detect"
-                    resp = client.post(ai_url_legacy, files={'file': (filename, img_bytes, 'image/jpeg')})
-                    
-                    if resp.status_code == 200:
-                        result = resp.json()
-                        if result.get("is_garbage"):
-                            cat = result.get("detected_category")
-                            if cat == "Pothole":
-                                ai_category = "Pothole / Road Defect"
-                            else:
-                                ai_category = "Garbage / Sanitation"
-                            
-                            if result.get("confidence", 0) > 0.8:
-                                ai_severity = "High"
-                            else:
-                                ai_severity = "Medium"
+                    try:
+                        resp = client.post(ai_url_legacy, files={'file': (filename, img_bytes, 'image/jpeg')})
+                        
+                        if resp.status_code == 200:
+                            result = resp.json()
+                            print(f"[AI] Legacy endpoint success: is_garbage={result.get('is_garbage')}")
+                            if result.get("is_garbage"):
+                                cat = result.get("detected_category")
+                                if cat == "Pothole":
+                                    ai_category = "Pothole / Road Defect"
+                                else:
+                                    ai_category = "Garbage / Sanitation"
+                                
+                                if result.get("confidence", 0) > 0.8:
+                                    ai_severity = "High"
+                                else:
+                                    ai_severity = "Medium"
+                        else:
+                            print(f"[AI] Legacy endpoint failed with status: {resp.status_code}")
+                    except Exception as legacy_error:
+                        print(f"[AI] Legacy endpoint error: {type(legacy_error).__name__}: {str(legacy_error)}")
                                 
         except Exception as e:
-            print(f"AI Service Error: {e}")
+            print(f"[AI] AI Service Error (outer): {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     # Set Category (Prioritize AI)
     final_category = ai_category if ai_category else category
