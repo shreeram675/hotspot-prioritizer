@@ -57,198 +57,206 @@ const AdminReports = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
+      <div className="min-h-screen bg-background">
+        <Navbar />
 
-            <main className="container py-lg">
-                <div className="admin-reports-header">
+        <main className="container py-lg">
+          <div className="admin-reports-header">
+            <div>
+              <h1 className="text-2xl mb-xs">AI-Analyzed Reports</h1>
+              <p className="text-muted">
+                View and manage reports with AI severity analysis
+              </p>
+            </div>
+          </div>
+
+          {/* Filters and Sorting */}
+          <Card className="mb-lg">
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="filter-label">
+                  <SortDesc size={16} />
+                  Sort By
+                </label>
+                <select
+                  className="filter-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="ai_severity_score">
+                    AI Severity (High to Low)
+                  </option>
+                  <option value="created_at">Date (Newest First)</option>
+                  <option value="upvotes">Most Upvoted</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">
+                  <Filter size={16} />
+                  Category
+                </label>
+                <select
+                  className="filter-select"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                >
+                  <option value="all">All Categories</option>
+                  <option value="road_issues">Road Issues</option>
+                  <option value="waste_management">Waste Management</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">
+                  <Filter size={16} />
+                  Status
+                </label>
+                <select
+                  className="filter-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          {/* Reports List */}
+          {loading ? (
+            <div className="text-center py-lg">Loading reports...</div>
+          ) : (
+            <div className="reports-grid">
+              {reports.map((report) => (
+                <Card
+                  key={report.id}
+                  className="report-card"
+                  onClick={() => navigate(`/admin/reports/${report.id}`)}
+                >
+                  <div className="report-card-header">
                     <div>
-                        <h1 className="text-2xl mb-xs">AI-Analyzed Reports</h1>
-                        <p className="text-muted">View and manage reports with AI severity analysis</p>
+                      <h3 className="report-title">{report.title}</h3>
+                      <div className="report-badges">
+                        <Badge variant="neutral">{report.category}</Badge>
+                        <Badge
+                          variant={getSeverityColor(report.ai_severity_score)}
+                        >
+                          {getSeverityLabel(report.ai_severity_level)}
+                        </Badge>
+                      </div>
                     </div>
-                </div>
+                    {report.ai_severity_score && (
+                      <div className="severity-badge-large">
+                        <Brain size={20} />
+                        <span className="severity-score">
+                          {Math.round(report.ai_severity_score)}
+                        </span>
+                        <span className="severity-max">/100</span>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Filters and Sorting */}
-                <Card className="mb-lg">
-                    <div className="filters-container">
-                        <div className="filter-group">
-                            <label className="filter-label">
-                                <SortDesc size={16} />
-                                Sort By
-                            </label>
-                            <select
-                                className="filter-select"
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                            >
-                                <option value="ai_severity_score">AI Severity (High to Low)</option>
-                                <option value="created_at">Date (Newest First)</option>
-                                <option value="upvotes">Most Upvoted</option>
-                                <option value="priority">Priority</option>
-                            </select>
-                        </div>
+                  {report.image_url && (
+                    <img
+                      src={report.image_url}
+                      alt={report.title}
+                      className="report-image"
+                    />
+                  )}
 
-                        <div className="filter-group">
-                            <label className="filter-label">
-                                <Filter size={16} />
-                                Category
-                            </label>
-                            <select
-                                className="filter-select"
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                            >
-                                <option value="all">All Categories</option>
-                                <option value="pothole">Pothole</option>
-                                <option value="garbage">Garbage</option>
-                                <option value="street_light">Street Light</option>
-                                <option value="flooding">Flooding</option>
-                            </select>
-                        </div>
+                  <p className="report-description">{report.description}</p>
 
-                        <div className="filter-group">
-                            <label className="filter-label">
-                                <Filter size={16} />
-                                Status
-                            </label>
-                            <select
-                                className="filter-select"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="assigned">Assigned</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="resolved">Resolved</option>
-                            </select>
+                  {/* AI Analysis Breakdown */}
+                  {report.ai_severity_score && (
+                    <div className="ai-breakdown">
+                      <h4 className="ai-breakdown-title">AI Analysis</h4>
+                      <div className="ai-scores-grid">
+                        {report.category === "pothole" && (
+                          <>
+                            <div className="ai-score-item">
+                              <span className="ai-score-label">Depth</span>
+                              <span className="ai-score-value">
+                                {report.pothole_depth_score
+                                  ? `${Math.round(report.pothole_depth_score * 100)}%`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                            <div className="ai-score-item">
+                              <span className="ai-score-label">Spread</span>
+                              <span className="ai-score-value">
+                                {report.pothole_spread_score
+                                  ? `${Math.round(report.pothole_spread_score * 100)}%`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        {report.category === "garbage" && (
+                          <>
+                            <div className="ai-score-item">
+                              <span className="ai-score-label">Volume</span>
+                              <span className="ai-score-value">
+                                {report.garbage_volume_score
+                                  ? `${Math.round(report.garbage_volume_score * 100)}%`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                            <div className="ai-score-item">
+                              <span className="ai-score-label">Hazard</span>
+                              <span className="ai-score-value">
+                                {report.garbage_waste_type_score
+                                  ? `${Math.round(report.garbage_waste_type_score * 100)}%`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                        <div className="ai-score-item">
+                          <span className="ai-score-label">Urgency</span>
+                          <span className="ai-score-value">
+                            {report.emotion_score
+                              ? `${Math.round(report.emotion_score * 100)}%`
+                              : "N/A"}
+                          </span>
                         </div>
+                        <div className="ai-score-item">
+                          <span className="ai-score-label">Location Risk</span>
+                          <span className="ai-score-value">
+                            {report.location_score
+                              ? `${Math.round(report.location_score * 100)}%`
+                              : "N/A"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  <div className="report-meta">
+                    <span className="report-date">
+                      {new Date(report.created_at).toLocaleDateString()}
+                    </span>
+                    <span className="report-upvotes">👍 {report.upvotes}</span>
+                  </div>
                 </Card>
+              ))}
+            </div>
+          )}
 
-                {/* Reports List */}
-                {loading ? (
-                    <div className="text-center py-lg">Loading reports...</div>
-                ) : (
-                    <div className="reports-grid">
-                        {reports.map((report) => (
-                            <Card
-                                key={report.id}
-                                className="report-card"
-                                onClick={() => navigate(`/admin/reports/${report.id}`)}
-                            >
-                                <div className="report-card-header">
-                                    <div>
-                                        <h3 className="report-title">{report.title}</h3>
-                                        <div className="report-badges">
-                                            <Badge variant="neutral">{report.category}</Badge>
-                                            <Badge variant={getSeverityColor(report.ai_severity_score)}>
-                                                {getSeverityLabel(report.ai_severity_level)}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                    {report.ai_severity_score && (
-                                        <div className="severity-badge-large">
-                                            <Brain size={20} />
-                                            <span className="severity-score">{Math.round(report.ai_severity_score)}</span>
-                                            <span className="severity-max">/100</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {report.image_url && (
-                                    <img
-                                        src={report.image_url}
-                                        alt={report.title}
-                                        className="report-image"
-                                    />
-                                )}
-
-                                <p className="report-description">{report.description}</p>
-
-                                {/* AI Analysis Breakdown */}
-                                {report.ai_severity_score && (
-                                    <div className="ai-breakdown">
-                                        <h4 className="ai-breakdown-title">AI Analysis</h4>
-                                        <div className="ai-scores-grid">
-                                            {report.category === 'pothole' && (
-                                                <>
-                                                    <div className="ai-score-item">
-                                                        <span className="ai-score-label">Depth</span>
-                                                        <span className="ai-score-value">
-                                                            {report.pothole_depth_score ?
-                                                                `${Math.round(report.pothole_depth_score * 100)}%` :
-                                                                'N/A'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="ai-score-item">
-                                                        <span className="ai-score-label">Spread</span>
-                                                        <span className="ai-score-value">
-                                                            {report.pothole_spread_score ?
-                                                                `${Math.round(report.pothole_spread_score * 100)}%` :
-                                                                'N/A'}
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            )}
-                                            {report.category === 'garbage' && (
-                                                <>
-                                                    <div className="ai-score-item">
-                                                        <span className="ai-score-label">Volume</span>
-                                                        <span className="ai-score-value">
-                                                            {report.garbage_volume_score ?
-                                                                `${Math.round(report.garbage_volume_score * 100)}%` :
-                                                                'N/A'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="ai-score-item">
-                                                        <span className="ai-score-label">Hazard</span>
-                                                        <span className="ai-score-value">
-                                                            {report.garbage_waste_type_score ?
-                                                                `${Math.round(report.garbage_waste_type_score * 100)}%` :
-                                                                'N/A'}
-                                                        </span>
-                                                    </div>
-                                                </>
-                                            )}
-                                            <div className="ai-score-item">
-                                                <span className="ai-score-label">Urgency</span>
-                                                <span className="ai-score-value">
-                                                    {report.emotion_score ?
-                                                        `${Math.round(report.emotion_score * 100)}%` :
-                                                        'N/A'}
-                                                </span>
-                                            </div>
-                                            <div className="ai-score-item">
-                                                <span className="ai-score-label">Location Risk</span>
-                                                <span className="ai-score-value">
-                                                    {report.location_score ?
-                                                        `${Math.round(report.location_score * 100)}%` :
-                                                        'N/A'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="report-meta">
-                                    <span className="report-date">
-                                        {new Date(report.created_at).toLocaleDateString()}
-                                    </span>
-                                    <span className="report-upvotes">👍 {report.upvotes}</span>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-
-                {!loading && reports.length === 0 && (
-                    <Card className="text-center py-lg">
-                        <p className="text-muted">No reports found matching your filters.</p>
-                    </Card>
-                )}
-            </main>
-        </div>
+          {!loading && reports.length === 0 && (
+            <Card className="text-center py-lg">
+              <p className="text-muted">
+                No reports found matching your filters.
+              </p>
+            </Card>
+          )}
+        </main>
+      </div>
     );
 };
 

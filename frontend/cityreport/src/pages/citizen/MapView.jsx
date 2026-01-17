@@ -48,79 +48,85 @@ const MapView = () => {
         : MOCK_REPORTS;
 
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar />
+      <div className="min-h-screen bg-background">
+        <Navbar />
 
-            <main className="map-view-container">
-                <div className="map-sidebar">
-                    <h2 className="text-xl mb-md">Nearby Reports</h2>
+        <main className="map-view-container">
+          <div className="map-sidebar">
+            <h2 className="text-xl mb-md">Nearby Reports</h2>
 
-                    <div className="mb-md">
-                        <select
-                            className="form-select w-full"
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                        >
-                            <option value="">All Categories</option>
-                            <option value="Roads">Roads</option>
-                            <option value="Sanitation">Sanitation</option>
-                            <option value="Electricity">Electricity</option>
-                            <option value="Water">Water</option>
-                        </select>
-                    </div>
+            <div className="mb-md">
+              <select
+                className="form-select w-full"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                <option value="road_issues">Road Issues</option>
+                <option value="waste_management">Waste Management</option>
+              </select>
+            </div>
 
-                    <div className="reports-list">
-                        {filteredReports.map(report => (
-                            <div
-                                key={report.id}
-                                className="report-list-item"
-                                onClick={() => navigate(`/citizen/report/${report.id}`)}
-                            >
-                                <div className="flex justify-between items-start mb-xs">
-                                    <h3 className="text-sm font-semibold">{report.title}</h3>
-                                    <Badge variant={getStatusVariant(report.status)} className="text-xs">
-                                        {report.status}
-                                    </Badge>
-                                </div>
-                                <p className="text-xs text-muted">{report.category}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="map-container">
-                    <MapContainer
-                        center={center}
-                        zoom={13}
-                        style={{ height: '100%', width: '100%' }}
+            <div className="reports-list">
+              {filteredReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="report-list-item"
+                  onClick={() => navigate(`/citizen/report/${report.id}`)}
+                >
+                  <div className="flex justify-between items-start mb-xs">
+                    <h3 className="text-sm font-semibold">{report.title}</h3>
+                    <Badge
+                      variant={getStatusVariant(report.status)}
+                      className="text-xs"
                     >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        {filteredReports.map(report => (
-                            <Marker key={report.id} position={report.position}>
-                                <Popup>
-                                    <div className="map-popup">
-                                        <h3 className="font-semibold mb-xs">{report.title}</h3>
-                                        <Badge variant={getStatusVariant(report.status)} className="text-xs mb-xs">
-                                            {report.status}
-                                        </Badge>
-                                        <p className="text-xs text-muted mb-sm">{report.category}</p>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => navigate(`/citizen/report/${report.id}`)}
-                                        >
-                                            View Details
-                                        </Button>
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
-                    </MapContainer>
+                      {report.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted">{report.category}</p>
                 </div>
-            </main>
-        </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="map-container">
+            <MapContainer
+              center={center}
+              zoom={13}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {filteredReports.map((report) => (
+                <Marker key={report.id} position={report.position}>
+                  <Popup>
+                    <div className="map-popup">
+                      <h3 className="font-semibold mb-xs">{report.title}</h3>
+                      <Badge
+                        variant={getStatusVariant(report.status)}
+                        className="text-xs mb-xs"
+                      >
+                        {report.status}
+                      </Badge>
+                      <p className="text-xs text-muted mb-sm">
+                        {report.category}
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/citizen/report/${report.id}`)}
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+        </main>
+      </div>
     );
 };
 
