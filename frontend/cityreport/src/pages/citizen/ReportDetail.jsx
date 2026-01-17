@@ -186,45 +186,13 @@ const ReportDetail = () => {
                                 </div>
                             </div>
                         </Card>
-                    </div>
-                </Card>
 
-                {/* AI Analysis Card */}
-                {(report.final_priority_score || report.ai_details) && (
-                    <Card className="mt-md border-l-4 border-l-primary">
-                        <h3 className="text-lg mb-md flex items-center gap-sm">
-                            <span className="text-primary">✨</span> AI Analysis
-                        </h3>
-                        <div className="info-list">
-                            <div className="info-item">
-                                <span className="info-label">Priority Score</span>
-                                <Badge variant={report.final_priority_score > 70 ? 'danger' : 'warning'}>
-                                    {report.final_priority_score || 'N/A'}/100
-                                </Badge>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Visual Severity</span>
-                                <span className="info-value">{(report.visual_score * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Est. Depth</span>
-                                <span className="info-value">{report.depth_score ? (report.depth_score > 0.7 ? "Deep" : "Shallow") : "N/A"}</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Urgency</span>
-                                <span className="info-value">{(report.urgency_score * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="info-item">
-                                <span className="info-label">Location Context</span>
-                                <span className="info-value">{(report.location_score * 100).toFixed(0)}%</span>
-                            </div>
-                        </div>
-                    </Card>
-                )}
+                        {/* AI Analysis Card */}
+                        <AIAnalysisCard report={report} />
+                    </div>
+                </div>
+            </main>
         </div>
-                </div >
-            </main >
-        </div >
     );
 };
 

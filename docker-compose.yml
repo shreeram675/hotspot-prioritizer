@@ -20,7 +20,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8005:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/cityreport
       AI_DUPLICATE_URL: http://ai-duplicate:9001
@@ -36,7 +36,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "3005:80"
     depends_on:
       - backend
 

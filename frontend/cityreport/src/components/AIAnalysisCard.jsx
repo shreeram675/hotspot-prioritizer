@@ -1,6 +1,6 @@
 import React from 'react';
-import Card from '../shared/Card';
-import Badge from '../shared/Badge';
+import Card from './shared/Card';
+import Badge from './shared/Badge';
 import './AIAnalysisCard.css';
 
 const AIAnalysisCard = ({ report }) => {
