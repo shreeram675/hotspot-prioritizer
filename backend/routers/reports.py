@@ -92,92 +92,50 @@ async def create_report(
     # Auto-assign Department
     department_id = await auto_assign_department(predicted_category, db)
     
-    # Call AI Ensemble Service
+    
+    # Domain-specific AI Analysis
     ai_scores = {}
-    ai_details_str = None
+    severity = ReportSeverity.medium  # Default
+    priority = ReportPriority.medium
     
-    # AI Service URL (Localhost port 8002)
-    AI_ENSEMBLE_URL = os.getenv("AI_ENSEMBLE_URL", "http://localhost:8002")
-
-    if report.image_url:
+    if report.image_url and predicted_category in ["pothole", "garbage"]:
         try:
-            # We need to download the image first to send it to the AI service
-            # Or if image_url is a local path (upload), handle accordingly.
-            # Assuming image_url is accessible via http or is a base64? 
-            # In a real app, we'd pass the file directly from the upload.
-            # For this MVP, let's assume the frontend sends the file in a separate multipart form if we strictly followed that.
-            # BUT: report.image_url suggests it's already uploaded to cloud/server.
+            if predicted_category == "pothole":
+                from ai_analysis import analyze_pothole_report
+                ai_scores = await analyze_pothole_report(
+                    image_url=report.image_url,
+                    description=report.description,
+                    latitude=report.latitude,
+                    longitude=report.longitude,
+                    upvotes=0
+                )
+            elif predicted_category == "garbage":
+                from ai_analysis import analyze_garbage_report
+                ai_scores = await analyze_garbage_report(
+                    image_url=report.image_url,
+                    description=report.description,
+                    latitude=report.latitude,
+                    longitude=report.longitude,
+                    upvotes=0
+                )
             
-            # Use a dummy text analysis if image is not readily available as bytes here,
-            # OR better: Download the image from the URL and forward it.
-            pass 
-            
-            # Since create_report receives JSON (ReportCreate), it doesn't receive the file directly here.
-            # The file upload likely happens in a separate endpoint or handled differently.
-            # However, looking at the previous code, there was no file upload logic here.
-            # If we want to support this, we need to fetch the image.
-            
-        except Exception as e:
-            print(f"AI Ensemble failed: {e}")
-
-    # For now, let's stick to the previous pattern but add the new service call logic. 
-    # Since the new service input requires an IMAGE FILE upload, 
-    # but our `create_report` takes a JSON body with `image_url`.
-    # We might need to fetch that image or change how create_report works.
-    
-    # Strategy:
-    # 1. If image_url is present, fetch it.
-    # 2. Send to ai-ensemble.
-    
-    visual = 0.0
-    depth = 0.0
-    urgency = 0.0
-    loc_score = 0.0
-    final_prio = 0.0
-    
-    if report.image_url:
-        try:
-            async with httpx.AsyncClient() as client:
-                # 1. Fetch Image
-                img_resp = await client.get(report.image_url)
-                if img_resp.status_code == 200:
-                    image_bytes = img_resp.content
-                    
-                    # 2. Call AI Service
-                    files = {'image': ('report.jpg', image_bytes, 'image/jpeg')}
-                    data = {
-                        'description': report.description,
-                        'lat': str(report.latitude),
-                        'lon': str(report.longitude)
-                    }
-                    
-                    ai_resp = await client.post(f"{AI_ENSEMBLE_URL}/analyze", data=data, files=files, timeout=30.0)
-                    
-                    if ai_resp.status_code == 200:
-                        res = ai_resp.json()
-                        visual = res['visual_severity_score']
-                        depth = res.get('depth_score', 0.0)
-                        urgency = res['urgency_score']
-                        loc_score = res['location_impact_score']
-                        final_prio = res['final_priority_score']
-                        ai_details_str = str(res['details'])
-                        
-                        # Set Priority Enum based on final score
-                        if final_prio > 80:
-                            priority = ReportPriority.critical
-                            severity = ReportSeverity.critical
-                        elif final_prio > 50:
-                            priority = ReportPriority.high
-                            severity = ReportSeverity.high
-                        elif final_prio > 30:
-                            priority = ReportPriority.medium
-                            severity = ReportSeverity.medium
-                        else:
-                            priority = ReportPriority.low
-                            severity = ReportSeverity.low
+            # Map AI severity score to enum
+            ai_severity = ai_scores.get('ai_severity_score', 50.0)
+            if ai_severity > 75:
+                severity = ReportSeverity.critical
+                priority = ReportPriority.critical
+            elif ai_severity > 50:
+                severity = ReportSeverity.high
+                priority = ReportPriority.high
+            elif ai_severity > 25:
+                severity = ReportSeverity.medium
+                priority = ReportPriority.medium
+            else:
+                severity = ReportSeverity.low
+                priority = ReportPriority.low
+                
         except Exception as e:
             print(f"AI Analysis failed: {e}")
-            # Fallback to defaults
             severity = ReportSeverity.medium
             priority = ReportPriority.medium
 
@@ -192,12 +150,16 @@ async def create_report(
         location=WKTElement(location_wkt, srid=4326),
         user_id=current_user.id,
         department_id=department_id,
-        visual_score=visual,
-        depth_score=depth,
-        urgency_score=urgency,
-        location_score=loc_score,
-        final_priority_score=final_prio,
-        ai_details=ai_details_str
+        # AI Scores
+        pothole_depth_score=ai_scores.get('pothole_depth_score'),
+        pothole_spread_score=ai_scores.get('pothole_spread_score'),
+        garbage_volume_score=ai_scores.get('garbage_volume_score'),
+        garbage_waste_type_score=ai_scores.get('garbage_waste_type_score'),
+        emotion_score=ai_scores.get('emotion_score'),
+        location_score=ai_scores.get('location_score'),
+        upvote_score=ai_scores.get('upvote_score'),
+        ai_severity_score=ai_scores.get('ai_severity_score'),
+        ai_severity_level=ai_scores.get('ai_severity_level')
     )
     
     # TODO: Trigger AI duplicate check here (async task or direct call)
@@ -278,8 +240,9 @@ async def get_reports(
     if sort_by == "upvotes":
         order_col = Report.upvotes
     elif sort_by == "priority":
-        # Custom ordering for priority enum
         order_col = Report.priority
+    elif sort_by == "ai_severity_score":
+        order_col = Report.ai_severity_score
     else:
         order_col = Report.created_at
     

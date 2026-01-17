@@ -6,6 +6,7 @@ import Navbar from '../../components/shared/Navbar';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
+import AIAnalysisCard from '../../components/AIAnalysisCard';
 import './ReportDetail.css';
 
 const MOCK_REPORT = {

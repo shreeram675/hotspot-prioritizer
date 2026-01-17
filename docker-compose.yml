@@ -1,60 +1,87 @@
+version: '3.8'
+
 services:
-  backend:
-    build: ./backend
-    container_name: backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://admin:admin123@db:5432/citizen_ai
-      - AI_DUPLICATE_URL=http://ai-duplicate:9001
-      - AI_LLM_URL=http://ai-llm:9002
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - db
-      - ai-duplicate
-      - ai-llm
-
-  frontend:
-    build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:80"
-
-  ai-duplicate:
-    build: ./ai-duplicate
-    container_name: ai-duplicate
-    ports:
-      - "9001:9001"
-
-  ai-llm:
-    build: ./ai-llm
-    container_name: ai-llm
-    ports:
-      - "9002:9002"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-
-  nginx:
-    build: ./nginx
-    container_name: nginx
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-      - frontend
-
   db:
-    image: postgis/postgis:15-3.4 # Official PostGIS image
-    container_name: postgres
-    restart: always
+    image: postgis/postgis:15-3.3
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin123
-      - POSTGRES_DB=citizen_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cityreport
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/cityreport
+      AI_DUPLICATE_URL: http://ai-duplicate:9001
+      AI_POTHOLE_CHILD_URL: http://ai-pothole-child:8001
+      AI_POTHOLE_PARENT_URL: http://ai-pothole-parent:8003
+      AI_GARBAGE_CHILD_URL: http://ai-garbage-child:8002
+      AI_GARBAGE_PARENT_URL: http://ai-garbage-parent:8004
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  ai-duplicate:
+    build: ./ai-duplicate
+    ports:
+      - "9001:9001"
+    environment:
+      MODEL_PATH: /app/models
+
+  ai-pothole-child:
+    build: ./ai-pothole-child
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  ai-pothole-parent:
+    build: ./ai-pothole-parent
+    ports:
+      - "8003:8003"
+    environment:
+      POTHOLE_MODEL_PATH: /app/models/pothole_severity.pth
+    volumes:
+      - C:\Users\shreeram\OneDrive\Desktop\MAIN EL\hotspot-prioritizer\ai_service:/app/models:ro
+
+  ai-garbage-child:
+    build: ./ai-garbage-child
+    ports:
+      - "8002:8002"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  ai-garbage-parent:
+    build: ./ai-garbage-parent
+    ports:
+      - "8004:8004"
+    environment:
+      GARBAGE_MODEL_PATH: /app/models/garbage_severity.pth
+    volumes:
+      - C:\Users\shreeram\OneDrive\Desktop\MAIN EL\hotspot-prioritizer\ai_service:/app/models:ro
 
 volumes:
-  pgdata:
+  postgres_data:
