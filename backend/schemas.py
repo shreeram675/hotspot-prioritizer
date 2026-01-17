@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field, validator, field_validator
+from typing import Optional, List, Any
 from datetime import datetime
 from models import UserRole, ReportStatus, ReportSeverity, ReportPriority
 
@@ -61,11 +61,17 @@ class ReportBase(BaseModel):
 class ReportCreate(ReportBase):
     pass
 
-class ReportResponse(ReportBase):
+class ReportResponse(BaseModel):
     id: int
+    title: str
+    description: str
+    category: str
     status: ReportStatus
     severity: ReportSeverity
     priority: ReportPriority
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    image_url: Optional[str] = None
     upvotes: int
     created_at: datetime
     user_id: int
@@ -73,7 +79,6 @@ class ReportResponse(ReportBase):
     assigned_team_id: Optional[int]
     resolution_image_url: Optional[str]
     citizen_feedback: Optional[str]
-    
     
     # AI Scores - Pothole Domain
     pothole_depth_score: Optional[float] = None

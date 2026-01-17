@@ -21,11 +21,8 @@ async def auto_assign_department(category: str, db: AsyncSession) -> Optional[in
     """Map category to department."""
     # Simple mapping for MVP
     mapping = {
-        "pothole": "Roads",
-        "street_light": "Electrical",
-        "garbage": "Sanitation",
-        "flooding": "Drainage",
-        "graffiti": "Sanitation"
+        "road_issues": "Roads",
+        "waste_management": "Sanitation"
     }
     dept_name = mapping.get(category)
     if dept_name:
@@ -98,9 +95,9 @@ async def create_report(
     severity = ReportSeverity.medium  # Default
     priority = ReportPriority.medium
     
-    if report.image_url and predicted_category in ["pothole", "garbage"]:
+    if report.image_url and predicted_category in ["road_issues", "waste_management"]:
         try:
-            if predicted_category == "pothole":
+            if predicted_category == "road_issues":
                 from ai_analysis import analyze_pothole_report
                 ai_scores = await analyze_pothole_report(
                     image_url=report.image_url,
@@ -109,7 +106,7 @@ async def create_report(
                     longitude=report.longitude,
                     upvotes=0
                 )
-            elif predicted_category == "garbage":
+            elif predicted_category == "waste_management":
                 from ai_analysis import analyze_garbage_report
                 ai_scores = await analyze_garbage_report(
                     image_url=report.image_url,
@@ -180,8 +177,44 @@ async def create_report(
     
     db.add(new_report)
     await db.commit()
-    await db.refresh(new_report)
-    return new_report
+    
+    # Extract lat/lon from the WKT we created (don't query back - that triggers geometry validation)
+    import re
+    match = re.search(r'POINT\((-?\d+\.?\d*)\s+(-?\d+\.?\d*)\)', location_wkt)
+    lon_val = float(match.group(1)) if match else None
+    lat_val = float(match.group(2)) if match else None
+    
+    # Convert location geometry to lat/lon for response
+    response_data = {
+        'id': new_report.id,
+        'title': new_report.title,
+        'description': new_report.description,
+        'category': new_report.category,
+        'status': new_report.status.value,
+        'severity': new_report.severity.value,
+        'priority': new_report.priority.value,
+        'image_url': new_report.image_url,
+        'upvotes': new_report.upvotes,
+        'created_at': new_report.created_at,
+        'user_id': new_report.user_id,
+        'department_id': new_report.department_id,
+        'assigned_team_id': new_report.assigned_team_id,
+        'resolution_image_url': new_report.resolution_image_url,
+        'citizen_feedback': new_report.citizen_feedback,
+        'pothole_depth_score': new_report.pothole_depth_score,
+        'pothole_spread_score': new_report.pothole_spread_score,
+        'garbage_volume_score': new_report.garbage_volume_score,
+        'garbage_waste_type_score': new_report.garbage_waste_type_score,
+        'emotion_score': new_report.emotion_score,
+        'location_score': new_report.location_score,
+        'upvote_score': new_report.upvote_score,
+        'ai_severity_score': new_report.ai_severity_score,
+        'ai_severity_level': new_report.ai_severity_level,
+        'latitude': lat_val,
+        'longitude': lon_val,
+    }
+    
+    return response_data
 
 @router.get("/", response_model=List[ReportResponse])
 async def get_reports(
@@ -254,18 +287,47 @@ async def get_reports(
     result = await db.execute(query)
     reports = result.scalars().all()
     
-    # Convert geometry to lat/lon
+    # Convert geometry to lat/lon for each report
     response_reports = []
     for r in reports:
-        if r.location is not None:
-            point = to_shape(r.location)
-            r.latitude = point.y
-            r.longitude = point.x
-        else:
-            r.latitude = 0.0
-            r.longitude = 0.0
+        report_dict = {
+            'id': r.id,
+            'title': r.title,
+            'description': r.description,
+            'category': r.category,
+            'status': r.status.value,
+            'severity': r.severity.value,
+            'priority': r.priority.value,
+            'image_url': r.image_url,
+            'upvotes': r.upvotes,
+            'created_at': r.created_at,
+            'user_id': r.user_id,
+            'department_id': r.department_id,
+            'assigned_team_id': r.assigned_team_id,
+            'resolution_image_url': r.resolution_image_url,
+            'citizen_feedback': r.citizen_feedback,
+            'pothole_depth_score': r.pothole_depth_score,
+            'pothole_spread_score': r.pothole_spread_score,
+            'garbage_volume_score': r.garbage_volume_score,
+            'garbage_waste_type_score': r.garbage_waste_type_score,
+            'emotion_score': r.emotion_score,
+            'location_score': r.location_score,
+            'upvote_score': r.upvote_score,
+            'ai_severity_score': r.ai_severity_score,
+            'ai_severity_level': r.ai_severity_level,
+        }
         
-        response_reports.append(r)
+        # Extract lat/lon from geometry
+        try:
+            shape = to_shape(r.location)
+            report_dict['latitude'] = shape.y
+            report_dict['longitude'] = shape.x
+        except Exception as e:
+            print(f"Error extracting coordinates: {e}")
+            report_dict['latitude'] = 0.0
+            report_dict['longitude'] = 0.0
+        
+        response_reports.append(report_dict)
 
     return response_reports
 
@@ -276,14 +338,48 @@ async def get_report(report_id: int, db: AsyncSession = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
-    if report.location is not None:
-        point = to_shape(report.location)
-        report.latitude = point.y
-        report.longitude = point.x
-    else:
-        report.latitude = 0.0
-        report.longitude = 0.0
-    return report
+    report_dict = {
+        'id': report.id,
+        'title': report.title,
+        'description': report.description,
+        'category': report.category,
+        'status': report.status.value,
+        'severity': report.severity.value,
+        'priority': report.priority.value,
+        'image_url': report.image_url,
+        'upvotes': report.upvotes,
+        'created_at': report.created_at,
+        'user_id': report.user_id,
+        'department_id': report.department_id,
+        'assigned_team_id': report.assigned_team_id,
+        'resolution_image_url': report.resolution_image_url,
+        'citizen_feedback': report.citizen_feedback,
+        'pothole_depth_score': report.pothole_depth_score,
+        'pothole_spread_score': report.pothole_spread_score,
+        'garbage_volume_score': report.garbage_volume_score,
+        'garbage_waste_type_score': report.garbage_waste_type_score,
+        'emotion_score': report.emotion_score,
+        'location_score': report.location_score,
+        'upvote_score': report.upvote_score,
+        'ai_severity_score': report.ai_severity_score,
+        'ai_severity_level': report.ai_severity_level,
+    }
+    
+    # Extract lat/lon from geometry
+    try:
+        if report.location is not None:
+            shape = to_shape(report.location)
+            report_dict['latitude'] = shape.y
+            report_dict['longitude'] = shape.x
+        else:
+            report_dict['latitude'] = 0.0
+            report_dict['longitude'] = 0.0
+    except Exception as e:
+        print(f"Error extracting coordinates: {e}")
+        report_dict['latitude'] = 0.0
+        report_dict['longitude'] = 0.0
+    
+    return report_dict
 
 @router.post("/{report_id}/verify", response_model=ReportResponse)
 async def verify_report(
