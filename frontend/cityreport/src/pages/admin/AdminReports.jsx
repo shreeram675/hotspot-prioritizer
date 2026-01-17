@@ -34,7 +34,7 @@ const AdminReports = () => {
                 params.append('status', filterStatus);
             }
 
-            const response = await axios.get(`http://localhost:8000/reports?${params}`);
+            const response = await axios.get(`http://localhost:8005/reports?${params}`);
             setReports(response.data);
             setLoading(false);
         } catch (error) {

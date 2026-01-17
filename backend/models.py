@@ -2,13 +2,15 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, E
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
-from pgvector.sqlalchemy import Vector
+from geoalchemy2 import Geometry
+# from pgvector.sqlalchemy import Vector
 from database import Base
 import enum
 
 class UserRole(str, enum.Enum):
     citizen = "citizen"
     admin = "admin"
+    officer = "officer"
 
 class ReportStatus(str, enum.Enum):
     pending = "pending"
@@ -86,7 +88,7 @@ class Report(Base):
     location = Column(Geometry("POINT", srid=4326))
     
     # Embedding for duplicate detection
-    embedding = Column(Vector(384))
+    # embedding = Column(Vector(384))
     
     # AI Analysis Scores - Pothole Domain
     pothole_depth_score = Column(Float, nullable=True)

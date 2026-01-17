@@ -25,14 +25,15 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            // Use FormData for OAuth2PasswordRequestForm
-            const formData = new FormData();
-            formData.append('username', email);
-            formData.append('password', password);
+            // Use URLSearchParams for OAuth2PasswordRequestForm
+            const params = new URLSearchParams();
+            params.append('username', email);
+            params.append('password', password);
 
-            const response = await api.post('/auth/login', formData, {
+            const response = await api.post('/auth/login', params, {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': undefined
                 },
             });
 
@@ -45,12 +46,10 @@ export const AuthProvider = ({ children }) => {
             // Set default authorization header
             api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-            // Fetch user details (you could also decode JWT or get from a /me endpoint)
-            // For now, we'll store basic info
-            const userInfo = {
-                email,
-                role: 'citizen' // Default role, should be fetched from backend
-            };
+            // Fetch user details from /auth/me
+            const meResponse = await api.get('/auth/me');
+            const userInfo = meResponse.data;
+
             setUser(userInfo);
             localStorage.setItem('user', JSON.stringify(userInfo));
 

@@ -43,8 +43,12 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            await signup(formData.name, formData.email, formData.password, formData.role);
-            navigate('/citizen/dashboard');
+            const user = await signup(formData.name, formData.email, formData.password, formData.role);
+            if (user.role === 'officer') {
+                navigate('/officer/dashboard');
+            } else {
+                navigate('/citizen/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.detail || 'Signup failed. Please try again.');
         } finally {
@@ -178,7 +182,7 @@ const Signup = () => {
                             variant="outline"
                             fullWidth
                             size="lg"
-                            onClick={() => window.location.href = 'http://localhost:8000/auth/google/login'}
+                            onClick={() => window.location.href = 'http://localhost:8005/auth/google/login'}
                             type="button"
                         >
                             <svg className="btn-icon" width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">

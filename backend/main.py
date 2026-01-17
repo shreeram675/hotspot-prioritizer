@@ -8,10 +8,11 @@ app = FastAPI(title="Citizen AI System API")
 # CORS
 origins = [
     "http://localhost:3000",
+    "http://localhost:3005",
     "http://localhost:5173",
-    "http://localhost:80",
-    "http://localhost",
-    "https://your-render-app.onrender.com",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3005",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
@@ -30,9 +31,7 @@ app.include_router(analytics.router)
 
 @app.on_event("startup")
 async def startup():
-    # Create tables on startup (for MVP)
     async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all) # Uncomment to reset DB
         await conn.run_sync(Base.metadata.create_all)
 
 @app.get("/")

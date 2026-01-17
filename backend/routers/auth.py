@@ -59,6 +59,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: AsyncSession = Depends(get_db)):
+    print(f"DEBUG: Login attempt for {form_data.username}")
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalars().first()
     
@@ -75,12 +76,14 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: 
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-    return {"access_token": access_token, "token_type": "bearer"}
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-REDIRECT_URI = "http://localhost:8000/auth/google/callback"
+REDIRECT_URI = "http://localhost:8005/auth/google/callback"
 
 @router.get("/google/login")
 async def google_login():
@@ -163,4 +166,4 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 5. Redirect to frontend with token
         # We redirect to a special frontend route that will handle storing the token
-        return RedirectResponse(url=f"http://localhost:5173/auth/callback?token={jwt_token}&role={user.role.value}&email={user.email}&name={user.name}")
+        return RedirectResponse(url=f"http://localhost:3005/auth/callback?token={jwt_token}&role={user.role.value}&email={user.email}&name={user.name}")

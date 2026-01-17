@@ -17,11 +17,19 @@ async def init_db():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
         
         # Enable pgvector extension
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        # await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         
         print("✅ Database extensions initialized successfully!")
         print("   - PostGIS: Enabled")
         print("   - pgvector: Enabled")
+        
+        # Create tables
+        from database import Base
+        import models  # Import models to register them with Base
+        
+        print("Creating tables...")
+        await conn.run_sync(Base.metadata.create_all)
+        print("✅ Tables created successfully!")
     
     await engine.dispose()
 

@@ -39,7 +39,7 @@ const ReportDetail = () => {
     useEffect(() => {
         const fetchReport = async () => {
             try {
-                const response = await axios.get(`http://localhost:8000/reports/${id}`);
+                const response = await axios.get(`http://localhost:8005/reports/${id}`);
                 setReport(response.data);
                 setLoading(false);
             } catch (error) {
