@@ -12,9 +12,11 @@ import './ReportDetail.css';
 const MOCK_REPORT = {
     id: 1,
     title: 'Pothole on Main Street',
-    category: 'Roads',
+    category: 'Road Issues',
     location: '123 Main St, Downtown',
     status: 'In Progress',
+    severity: 'Medium',
+    priority: 'High',
     description: 'Large pothole causing traffic issues. Approximately 2 feet in diameter and 6 inches deep. Located near the intersection with Park Avenue.',
     imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=800',
     upvotes: 12,
@@ -38,18 +40,19 @@ const ReportDetail = () => {
 
     useEffect(() => {
       const fetchReport = async () => {
+        // For now, just use mock data immediately
+        setReport(MOCK_REPORT);
+        setLoading(false);
+
+        // Try to fetch real data but don't block on it
         try {
           const response = await axios.get(
             `http://localhost:8005/reports/${id}`,
           );
           console.log("Report fetched:", response.data);
           setReport(response.data);
-          setLoading(false);
         } catch (error) {
           console.error("Error fetching report:", error);
-          console.log("Using mock data as fallback");
-          setReport(MOCK_REPORT);
-          setLoading(false);
         }
       };
       fetchReport();
@@ -83,22 +86,17 @@ const ReportDetail = () => {
     };
 
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div style={{ padding: '20px' }}>
+        <h1>Report Details</h1>
+        <p>Report ID: {id}</p>
+        <p>Title: {report.title}</p>
+        <p>Description: {report.description}</p>
+      </div>
+    );
+  }
+};
 
-        <main className="container py-lg">
-          <Button
-            variant="ghost"
-            icon={ArrowLeft}
-            onClick={() => navigate("/citizen/dashboard")}
-            className="mb-md"
-          >
-            Back to Dashboard
-          </Button>
-
-          <div className="report-detail-container">
-            <div className="report-detail-main">
-              <Card>
+export default ReportDetail;
                 <div className="flex justify-between items-start mb-md">
                   <div>
                     <h1 className="text-2xl mb-sm">{report.title}</h1>
@@ -112,9 +110,9 @@ const ReportDetail = () => {
                 </div>
 
                 <div className="report-image-container mb-md">
-                  {report.image_url && (
+                  {(report.image_url || report.imageUrl) && (
                     <img
-                      src={report.image_url}
+                      src={report.image_url || report.imageUrl}
                       alt={report.title}
                       className="report-detail-image"
                     />
@@ -136,7 +134,7 @@ const ReportDetail = () => {
                     <span>
                       Reported on{" "}
                       {new Date(
-                        report.created_at || report.createdAt
+                        report.created_at || report.createdAt,
                       ).toLocaleDateString()}
                     </span>
                   </div>
@@ -212,11 +210,11 @@ const ReportDetail = () => {
                   </div>
                   <div className="info-item">
                     <span className="info-label">Severity</span>
-                    <span className="info-value">{report.severity}</span>
+                    <span className="info-value">{report.severity || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Priority</span>
-                    <span className="info-value">{report.priority}</span>
+                    <span className="info-value">{report.priority || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Upvotes</span>
@@ -240,6 +238,3 @@ const ReportDetail = () => {
         </main>
       </div>
     );
-};
-
-export default ReportDetail;
