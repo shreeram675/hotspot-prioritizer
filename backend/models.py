@@ -88,6 +88,23 @@ class Report(Base):
     # Embedding for duplicate detection
     embedding = Column(Vector(384))
     
+    # AI Analysis Scores - Pothole Domain
+    pothole_depth_score = Column(Float, nullable=True)
+    pothole_spread_score = Column(Float, nullable=True)
+    
+    # AI Analysis Scores - Garbage Domain
+    garbage_volume_score = Column(Float, nullable=True)
+    garbage_waste_type_score = Column(Float, nullable=True)
+    
+    # AI Analysis Scores - Common
+    emotion_score = Column(Float, nullable=True)
+    location_score = Column(Float, nullable=True)
+    upvote_score = Column(Float, nullable=True)
+    
+    # Final AI Severity Score (0-100)
+    ai_severity_score = Column(Float, nullable=True)
+    ai_severity_level = Column(String, nullable=True)  # low, medium, high, critical
+
     upvotes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

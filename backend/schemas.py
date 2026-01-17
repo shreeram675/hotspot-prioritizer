@@ -74,6 +74,14 @@ class ReportResponse(ReportBase):
     resolution_image_url: Optional[str]
     citizen_feedback: Optional[str]
     
+    # AI Scores
+    visual_score: Optional[float] = None
+    depth_score: Optional[float] = None
+    urgency_score: Optional[float] = None
+    location_score: Optional[float] = None
+    final_priority_score: Optional[float] = None
+    ai_details: Optional[str] = None
+    
     class Config:
         from_attributes = True
 

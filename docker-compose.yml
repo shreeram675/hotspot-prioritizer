@@ -44,7 +44,7 @@ services:
       - frontend
 
   db:
-    image: ankane/pgvector:v0.5.1 # Includes PostGIS and pgvector
+    image: postgis/postgis:15-3.4 # Official PostGIS image
     container_name: postgres
     restart: always
     environment:

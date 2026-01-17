@@ -92,31 +92,94 @@ async def create_report(
     # Auto-assign Department
     department_id = await auto_assign_department(predicted_category, db)
     
-    # Predict Severity
-    severity = await predict_severity(f"{report.title}. {report.description}")
+    # Call AI Ensemble Service
+    ai_scores = {}
+    ai_details_str = None
+    
+    # AI Service URL (Localhost port 8002)
+    AI_ENSEMBLE_URL = os.getenv("AI_ENSEMBLE_URL", "http://localhost:8002")
 
-    # Predict Priority (location-based + upvotes)
-    priority = ReportPriority.medium  # Default
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{AI_DUPLICATE_URL}/predict_priority",
-                json={
-                    "text": f"{report.title}. {report.description}",
-                    "latitude": report.latitude,
-                    "longitude": report.longitude,
-                    "upvotes": 0  # New report, no upvotes yet
-                },
-                timeout=5.0
-            )
-            if response.status_code == 200:
-                result = response.json()
-                priority_str = result['priority']
-                if priority_str in ReportPriority.__members__:
-                    priority = ReportPriority[priority_str]
-                print(f"Priority prediction: {priority_str}, factors: {result.get('factors', {})}")
-    except Exception as e:
-        print(f"Priority prediction failed: {e}")
+    if report.image_url:
+        try:
+            # We need to download the image first to send it to the AI service
+            # Or if image_url is a local path (upload), handle accordingly.
+            # Assuming image_url is accessible via http or is a base64? 
+            # In a real app, we'd pass the file directly from the upload.
+            # For this MVP, let's assume the frontend sends the file in a separate multipart form if we strictly followed that.
+            # BUT: report.image_url suggests it's already uploaded to cloud/server.
+            
+            # Use a dummy text analysis if image is not readily available as bytes here,
+            # OR better: Download the image from the URL and forward it.
+            pass 
+            
+            # Since create_report receives JSON (ReportCreate), it doesn't receive the file directly here.
+            # The file upload likely happens in a separate endpoint or handled differently.
+            # However, looking at the previous code, there was no file upload logic here.
+            # If we want to support this, we need to fetch the image.
+            
+        except Exception as e:
+            print(f"AI Ensemble failed: {e}")
+
+    # For now, let's stick to the previous pattern but add the new service call logic. 
+    # Since the new service input requires an IMAGE FILE upload, 
+    # but our `create_report` takes a JSON body with `image_url`.
+    # We might need to fetch that image or change how create_report works.
+    
+    # Strategy:
+    # 1. If image_url is present, fetch it.
+    # 2. Send to ai-ensemble.
+    
+    visual = 0.0
+    depth = 0.0
+    urgency = 0.0
+    loc_score = 0.0
+    final_prio = 0.0
+    
+    if report.image_url:
+        try:
+            async with httpx.AsyncClient() as client:
+                # 1. Fetch Image
+                img_resp = await client.get(report.image_url)
+                if img_resp.status_code == 200:
+                    image_bytes = img_resp.content
+                    
+                    # 2. Call AI Service
+                    files = {'image': ('report.jpg', image_bytes, 'image/jpeg')}
+                    data = {
+                        'description': report.description,
+                        'lat': str(report.latitude),
+                        'lon': str(report.longitude)
+                    }
+                    
+                    ai_resp = await client.post(f"{AI_ENSEMBLE_URL}/analyze", data=data, files=files, timeout=30.0)
+                    
+                    if ai_resp.status_code == 200:
+                        res = ai_resp.json()
+                        visual = res['visual_severity_score']
+                        depth = res.get('depth_score', 0.0)
+                        urgency = res['urgency_score']
+                        loc_score = res['location_impact_score']
+                        final_prio = res['final_priority_score']
+                        ai_details_str = str(res['details'])
+                        
+                        # Set Priority Enum based on final score
+                        if final_prio > 80:
+                            priority = ReportPriority.critical
+                            severity = ReportSeverity.critical
+                        elif final_prio > 50:
+                            priority = ReportPriority.high
+                            severity = ReportSeverity.high
+                        elif final_prio > 30:
+                            priority = ReportPriority.medium
+                            severity = ReportSeverity.medium
+                        else:
+                            priority = ReportPriority.low
+                            severity = ReportSeverity.low
+        except Exception as e:
+            print(f"AI Analysis failed: {e}")
+            # Fallback to defaults
+            severity = ReportSeverity.medium
+            priority = ReportPriority.medium
 
     new_report = Report(
         title=report.title,
@@ -128,7 +191,13 @@ async def create_report(
         image_url=report.image_url,
         location=WKTElement(location_wkt, srid=4326),
         user_id=current_user.id,
-        department_id=department_id
+        department_id=department_id,
+        visual_score=visual,
+        depth_score=depth,
+        urgency_score=urgency,
+        location_score=loc_score,
+        final_priority_score=final_prio,
+        ai_details=ai_details_str
     )
     
     # TODO: Trigger AI duplicate check here (async task or direct call)

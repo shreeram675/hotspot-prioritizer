@@ -1,0 +1,10 @@
+torch>=2.0.0
+fastapi
+uvicorn
+pydantic
+numpy
+ultralytics
+transformers
+pillow
+requests
+python-multipart

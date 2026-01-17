@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { ArrowLeft, MapPin, Calendar, ThumbsUp, MessageSquare, Send } from 'lucide-react';
 import Navbar from '../../components/shared/Navbar';
 import Button from '../../components/shared/Button';
@@ -29,9 +30,28 @@ const MOCK_REPORT = {
 const ReportDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [report] = useState(MOCK_REPORT);
+    const [report, setReport] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [comment, setComment] = useState('');
     const [upvoted, setUpvoted] = useState(false);
+
+    useEffect(() => {
+        const fetchReport = async () => {
+            try {
+                const response = await axios.get(`http://localhost:8000/reports/${id}`);
+                setReport(response.data);
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching report:", error);
+                // Fallback to mock if needed, or just loading state
+                setLoading(false);
+            }
+        };
+        fetchReport();
+    }, [id]);
+
+    if (loading) return <div className="p-lg text-center">Loading...</div>;
+    if (!report) return <div className="p-lg text-center">Report not found</div>;
 
     const getStatusVariant = (status) => {
         switch (status.toLowerCase()) {
@@ -166,9 +186,44 @@ const ReportDetail = () => {
                             </div>
                         </Card>
                     </div>
-                </div>
-            </main>
+                </Card>
+
+                {/* AI Analysis Card */}
+                {(report.final_priority_score || report.ai_details) && (
+                    <Card className="mt-md border-l-4 border-l-primary">
+                        <h3 className="text-lg mb-md flex items-center gap-sm">
+                            <span className="text-primary">✨</span> AI Analysis
+                        </h3>
+                        <div className="info-list">
+                            <div className="info-item">
+                                <span className="info-label">Priority Score</span>
+                                <Badge variant={report.final_priority_score > 70 ? 'danger' : 'warning'}>
+                                    {report.final_priority_score || 'N/A'}/100
+                                </Badge>
+                            </div>
+                            <div className="info-item">
+                                <span className="info-label">Visual Severity</span>
+                                <span className="info-value">{(report.visual_score * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="info-item">
+                                <span className="info-label">Est. Depth</span>
+                                <span className="info-value">{report.depth_score ? (report.depth_score > 0.7 ? "Deep" : "Shallow") : "N/A"}</span>
+                            </div>
+                            <div className="info-item">
+                                <span className="info-label">Urgency</span>
+                                <span className="info-value">{(report.urgency_score * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="info-item">
+                                <span className="info-label">Location Context</span>
+                                <span className="info-value">{(report.location_score * 100).toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    </Card>
+                )}
         </div>
+                </div >
+            </main >
+        </div >
     );
 };
 
