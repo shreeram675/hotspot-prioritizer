@@ -87,154 +87,18 @@ const ReportDetail = () => {
 
     return (
       <div style={{ padding: '20px' }}>
-        <h1>Report Details</h1>
-        <p>Report ID: {id}</p>
-        <p>Title: {report.title}</p>
-        <p>Description: {report.description}</p>
+        <button onClick={() => navigate("/citizen/dashboard")} style={{ marginBottom: '20px' }}>
+          ← Back to Dashboard
+        </button>
+        <h1>{report.title}</h1>
+        <p><strong>ID:</strong> {report.id}</p>
+        <p><strong>Category:</strong> {report.category}</p>
+        <p><strong>Status:</strong> {report.status}</p>
+        <p><strong>Location:</strong> {report.location}</p>
+        <p><strong>Description:</strong> {report.description}</p>
+        <p><strong>Upvotes:</strong> {report.upvotes}</p>
       </div>
     );
-  }
 };
 
 export default ReportDetail;
-                <div className="flex justify-between items-start mb-md">
-                  <div>
-                    <h1 className="text-2xl mb-sm">{report.title}</h1>
-                    <div className="flex gap-sm items-center flex-wrap">
-                      <Badge variant="neutral">{report.category}</Badge>
-                      <Badge variant={getStatusVariant(report.status)}>
-                        {report.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="report-image-container mb-md">
-                  {(report.image_url || report.imageUrl) && (
-                    <img
-                      src={report.image_url || report.imageUrl}
-                      alt={report.title}
-                      className="report-detail-image"
-                    />
-                  )}
-                </div>
-
-                <div className="report-meta mb-md">
-                  <div className="meta-item">
-                    <MapPin size={16} />
-                    <span>
-                      Location:{" "}
-                      {report.latitude && report.longitude
-                        ? `${report.latitude}, ${report.longitude}`
-                        : report.location || "Unknown"}
-                    </span>
-                  </div>
-                  <div className="meta-item">
-                    <Calendar size={16} />
-                    <span>
-                      Reported on{" "}
-                      {new Date(
-                        report.created_at || report.createdAt,
-                      ).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="report-description mb-lg">
-                  <h3 className="text-lg mb-sm">Description</h3>
-                  <p className="text-secondary">{report.description}</p>
-                </div>
-
-                <div className="report-actions">
-                  <Button
-                    variant={upvoted ? "primary" : "outline"}
-                    icon={ThumbsUp}
-                    onClick={handleUpvote}
-                  >
-                    {upvoted ? "Upvoted" : "Upvote"} (
-                    {report.upvotes + (upvoted ? 1 : 0)})
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="mt-lg">
-                <h3 className="text-lg mb-md flex items-center gap-sm">
-                  <MessageSquare size={20} />
-                  Comments ({report.comments ? report.comments.length : 0})
-                </h3>
-
-                <form
-                  onSubmit={handleCommentSubmit}
-                  className="comment-form mb-lg"
-                >
-                  <textarea
-                    className="form-textarea"
-                    placeholder="Add a comment..."
-                    rows="3"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                  />
-                  <Button type="submit" icon={Send} disabled={!comment.trim()}>
-                    Post Comment
-                  </Button>
-                </form>
-
-                <div className="comments-list">
-                  {report.comments &&
-                    report.comments.map((c) => (
-                      <div key={c.id} className="comment-item">
-                        <div className="comment-header">
-                          <span className="font-semibold">{c.user}</span>
-                          <span className="text-xs text-muted">
-                            {new Date(c.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="comment-text">{c.text}</p>
-                      </div>
-                    ))}
-                </div>
-              </Card>
-            </div>
-
-            <div className="report-detail-sidebar">
-              <Card>
-                <h3 className="text-lg mb-md">Report Information</h3>
-                <div className="info-list">
-                  <div className="info-item">
-                    <span className="info-label">ID</span>
-                    <span className="info-value">{report.id}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Status</span>
-                    <span className="info-value">{report.status}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Severity</span>
-                    <span className="info-value">{report.severity || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Priority</span>
-                    <span className="info-value">{report.priority || 'N/A'}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Upvotes</span>
-                    <span className="info-value">{report.upvotes}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Last Updated</span>
-                    <span className="info-value">
-                      {new Date(
-                        report.updated_at || report.created_at,
-                      ).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* AI Analysis Card */}
-              <AIAnalysisCard report={report} />
-            </div>
-          </div>
-        </main>
-      </div>
-    );
