@@ -4,11 +4,13 @@ from typing import Dict, Optional
 
 logger = logging.getLogger("backend")
 
+import os
+
 # AI Service URLs
-POTHOLE_CHILD_URL = "http://localhost:8001"
-POTHOLE_PARENT_URL = "http://localhost:8003"
-GARBAGE_CHILD_URL = "http://localhost:8002"
-GARBAGE_PARENT_URL = "http://localhost:8004"
+POTHOLE_CHILD_URL = os.getenv("AI_POTHOLE_CHILD_URL", "http://ai-pothole-child:8001")
+POTHOLE_PARENT_URL = os.getenv("AI_POTHOLE_PARENT_URL", "http://ai-pothole-parent:8003")
+GARBAGE_CHILD_URL = os.getenv("AI_GARBAGE_CHILD_URL", "http://ai-garbage-child:8002")
+GARBAGE_PARENT_URL = os.getenv("AI_GARBAGE_PARENT_URL", "http://ai-garbage-parent:8004")
 
 
 async def analyze_pothole_report(
