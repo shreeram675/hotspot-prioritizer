@@ -1,23 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
-from sentence_transformers import SentenceTransformer, util
-from transformers import pipeline
-import torch
+import difflib
+import math
 
-app = FastAPI(title="AI Duplicate Detection Service")
+app = FastAPI(title="AI Duplicate Detection Service (Lightweight)")
 
-# Load models at startup
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# Zero-shot classifier for category prediction (no training needed!)
-try:
-    category_classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
-    CATEGORIES = ["pothole", "garbage", "street_light", "graffiti", "flooding", "noise_complaint", "broken_infrastructure", "other"]
-except Exception as e:
-    print(f"Warning: Could not load category classifier: {e}")
-    category_classifier = None
-    CATEGORIES = []
+# --------------------------
+# Lightweight Logic Models
+# --------------------------
 
 class EmbedRequest(BaseModel):
     text: str
@@ -40,41 +31,6 @@ class DuplicateMatch(BaseModel):
 class DuplicateCheckResponse(BaseModel):
     matches: List[DuplicateMatch]
 
-@app.get("/")
-def root():
-    return {"message": "ai-duplicate service is running"}
-
-@app.post("/embed", response_model=EmbedResponse)
-def embed(request: EmbedRequest):
-    embedding = model.encode(request.text)
-    return {"embedding": embedding.tolist()}
-
-@app.post("/check_duplicates", response_model=DuplicateCheckResponse)
-def check_duplicates(request: DuplicateCheckRequest):
-    if not request.candidates:
-        return {"matches": []}
-
-    # Encode new report
-    new_embedding = model.encode(request.new_report_text, convert_to_tensor=True)
-    
-    # Encode candidates
-    candidate_texts = [c.text for c in request.candidates]
-    candidate_embeddings = model.encode(candidate_texts, convert_to_tensor=True)
-    
-    # Compute cosine similarity
-    cosine_scores = util.cos_sim(new_embedding, candidate_embeddings)[0]
-    
-    matches = []
-    for i, score in enumerate(cosine_scores):
-        # Threshold can be tuned. 0.7 is a reasonable starting point for "similar topic"
-        if score > 0.6: 
-            matches.append(DuplicateMatch(id=request.candidates[i].id, score=float(score)))
-            
-    # Sort by score desc
-    matches.sort(key=lambda x: x.score, reverse=True)
-    
-    return {"matches": matches}
-
 class CategoryRequest(BaseModel):
     text: str
 
@@ -83,40 +39,12 @@ class CategoryResponse(BaseModel):
     confidence: float
     all_scores: dict
 
-@app.post("/predict_category", response_model=CategoryResponse)
-def predict_category(request: CategoryRequest):
-    if not category_classifier:
-        raise HTTPException(status_code=503, detail="Category classifier not available")
-    
-    result = category_classifier(request.text, candidate_labels=CATEGORIES)
-    
-    # Return top prediction
-    return {
-        "category": result['labels'][0],
-        "confidence": float(result['scores'][0]),
-        "all_scores": {label: float(score) for label, score in zip(result['labels'], result['scores'])}
-    }
-
 class SeverityRequest(BaseModel):
     text: str
 
 class SeverityResponse(BaseModel):
     severity: str
     confidence: float
-
-@app.post("/predict_severity", response_model=SeverityResponse)
-def predict_severity(request: SeverityRequest):
-    if not category_classifier:
-        # Fallback if model not loaded
-        return {"severity": "medium", "confidence": 0.0}
-    
-    severity_labels = ["critical", "high", "medium", "low"]
-    result = category_classifier(request.text, candidate_labels=severity_labels)
-    
-    return {
-        "severity": result['labels'][0],
-        "confidence": float(result['scores'][0])
-    }
 
 class PriorityRequest(BaseModel):
     text: str
@@ -129,67 +57,142 @@ class PriorityResponse(BaseModel):
     confidence: float
     factors: dict
 
-# Sensitive location types (schools, colleges, hospitals, etc.)
-SENSITIVE_LOCATIONS = {
-    "school": ["school", "college", "university", "education", "campus", "institute"],
-    "hospital": ["hospital", "clinic", "medical", "health center", "emergency"],
-    "public": ["park", "playground", "community center", "library", "temple", "mosque", "church"]
-}
+# --------------------------
+# Endpoints
+# --------------------------
+
+@app.get("/")
+def root():
+    return {"message": "ai-duplicate service is running (Lightweight Mode)"}
+
+@app.post("/embed", response_model=EmbedResponse)
+def embed(request: EmbedRequest):
+    """
+    Generate a simple 'hash-like' embedding for MVP compatibility.
+    Real vector DBs need real floats, so we simulate a deterministic vector 
+    based on character counts/content to ensure non-crashing.
+    """
+    # Deterministic pseudo-random vector based on content (size 384 to match MiniLM)
+    import random
+    random.seed(request.text) 
+    embedding = [random.random() for _ in range(384)]
+    return {"embedding": embedding}
+
+@app.post("/check_duplicates", response_model=DuplicateCheckResponse)
+def check_duplicates(request: DuplicateCheckRequest):
+    """
+    Use Python's built-in SequenceMatcher for text similarity.
+    Robust, fast, no deps.
+    """
+    if not request.candidates:
+        return {"matches": []}
+
+    matches = []
+    new_text = request.new_report_text.lower()
+    
+    for candidate in request.candidates:
+        cand_text = candidate.text.lower()
+        # Calculate similarity ratio (0.0 to 1.0)
+        score = difflib.SequenceMatcher(None, new_text, cand_text).ratio()
+        
+        if score > 0.6: # Threshold
+            matches.append(DuplicateMatch(id=candidate.id, score=score))
+            
+    matches.sort(key=lambda x: x.score, reverse=True)
+    return {"matches": matches}
+
+@app.post("/predict_category", response_model=CategoryResponse)
+def predict_category(request: CategoryRequest):
+    """
+    Keyword-based intent classification.
+    """
+    text = request.text.lower()
+    
+    # Keyword mapping
+    categories = {
+        "pothole": ["pothole", "road", "tarmac", "asphalt", "hole", "street"],
+        "garbage": ["garbage", "trash", "rubbish", "waste", "bin", "dump", "dirty", "smell"],
+        "street_light": ["light", "lamp", "dark", "pole", "bulb"],
+        "flooding": ["flood", "water", "rain", "drain", "blocked"],
+        "graffiti": ["graffiti", "paint", "wall", "vandalism"],
+        "noise_complaint": ["noise", "loud", "music", "sound"],
+    }
+    
+    best_cat = "other"
+    best_score = 0.0
+    all_scores = {}
+    
+    for cat, keywords in categories.items():
+        score = 0.0
+        for k in keywords:
+            if k in text:
+                score += 0.3
+        
+        # Normalize roughly to 0-1
+        score = min(score, 1.0)
+        if score == 0: score = 0.05 # small epilson
+        
+        all_scores[cat] = score
+        if score > best_score:
+            best_score = score
+            best_cat = cat
+            
+    return {
+        "category": best_cat,
+        "confidence": best_score,
+        "all_scores": all_scores
+    }
+
+@app.post("/predict_severity", response_model=SeverityResponse)
+def predict_severity(request: SeverityRequest):
+    text = request.text.lower()
+    
+    severity = "medium"
+    confidence = 0.5
+    
+    if any(w in text for w in ["danger", "accident", "huge", "critical", "death", "severe"]):
+        severity = "critical"
+        confidence = 0.9
+    elif any(w in text for w in ["urgent", "bad", "deep", "large", "fast"]):
+        severity = "high"
+        confidence = 0.8
+    elif any(w in text for w in ["low", "minor", "small", "fix"]):
+        severity = "low"
+        confidence = 0.7
+        
+    return {"severity": severity, "confidence": confidence}
 
 @app.post("/predict_priority", response_model=PriorityResponse)
 def predict_priority(request: PriorityRequest):
-    """
-    Calculate priority based on:
-    1. Location sensitivity (schools, hospitals = high priority)
-    2. Upvote count (community concern)
-    3. Text content analysis
-    """
+    # Reuse the logic which was already largely keyword based
     priority_score = 0.0
     factors = {}
     
-    # Factor 1: Location-based priority (40% weight)
-    location_priority = 0.0
     text_lower = request.text.lower()
     
-    for loc_type, keywords in SENSITIVE_LOCATIONS.items():
-        if any(keyword in text_lower for keyword in keywords):
-            location_priority = 0.8 if loc_type in ["school", "hospital"] else 0.6
-            factors["location_sensitive"] = loc_type
-            break
+    # Loc
+    if any(w in text_lower for w in ["school", "college", "hospital", "clinic"]):
+        priority_score += 0.4
+        factors["location_sensitive"] = "school/hospital"
     
-    priority_score += location_priority * 0.4
+    # Upvotes
+    uv_score = min(request.upvotes / 20.0, 1.0) * 0.3
+    priority_score += uv_score
+    factors["upvotes"] = request.upvotes
     
-    # Factor 2: Upvote-based priority (30% weight)
-    upvote_priority = min(request.upvotes / 20.0, 1.0)  # Normalize to 0-1, cap at 20 upvotes
-    factors["upvote_count"] = request.upvotes
-    factors["upvote_score"] = upvote_priority
-    priority_score += upvote_priority * 0.3
-    
-    # Factor 3: Content-based urgency (30% weight)
-    content_priority = 0.0
-    if category_classifier:
-        urgency_labels = ["urgent", "critical", "dangerous", "emergency", "not urgent"]
-        result = category_classifier(request.text, candidate_labels=urgency_labels)
-        if result['labels'][0] in ["urgent", "critical", "dangerous", "emergency"]:
-            content_priority = float(result['scores'][0])
-            factors["content_urgency"] = result['labels'][0]
-    
-    priority_score += content_priority * 0.3
-    
-    # Map score to priority level
-    if priority_score >= 0.7:
-        priority_level = "critical"
-    elif priority_score >= 0.5:
-        priority_level = "high"
-    elif priority_score >= 0.3:
-        priority_level = "medium"
-    else:
-        priority_level = "low"
-    
-    factors["total_score"] = priority_score
+    # Urgency
+    if "urgent" in text_lower or "critical" in text_lower:
+        priority_score += 0.3
+        factors["urgency"] = "high"
+        
+    # Determine level
+    if priority_score >= 0.7: level = "critical"
+    elif priority_score >= 0.5: level = "high"
+    elif priority_score >= 0.3: level = "medium"
+    else: level = "low"
     
     return {
-        "priority": priority_level,
+        "priority": level,
         "confidence": priority_score,
         "factors": factors
     }

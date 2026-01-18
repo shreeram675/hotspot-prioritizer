@@ -136,7 +136,7 @@ const ReportDetail = () => {
             <Card className="mb-lg p-none overflow-hidden">
               <div className="report-image-container">
                 <img
-                  src={report.image_url ? (report.image_url.startsWith('/uploads') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
+                  src={report.image_url ? (report.image_url.startsWith('/upload') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
                   alt={report.title}
                   className="report-detail-image"
                 />

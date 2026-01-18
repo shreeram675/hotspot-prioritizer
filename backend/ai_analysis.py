@@ -18,7 +18,8 @@ async def analyze_pothole_report(
     description: str,
     latitude: float,
     longitude: float,
-    upvotes: int
+    upvotes: int,
+    image_bytes: Optional[bytes] = None
 ) -> Dict:
     """
     Orchestrate pothole analysis pipeline:
@@ -32,9 +33,18 @@ async def analyze_pothole_report(
             from pathlib import Path
             
             # Convert URL path to file path
-            if image_url.startswith("/uploads/"):
+            # Read image
+            if image_bytes:
+                pass
+            elif image_url.startswith("/uploads/"):
                 file_path = Path("uploads") / image_url.replace("/uploads/", "")
-                image_bytes = None # Initialize image_bytes for local read path
+                if file_path.exists():
+                    with open(file_path, 'rb') as f:
+                        image_bytes = f.read()
+                    file_path = None # Found locally
+                else:
+                    # Not found locally (could happen if DB switch happened mid-flight but unlikely)
+                    image_bytes = None
             else:
                 # Fallback: try to fetch via HTTP if it's a full URL
                 img_resp = await client.get(image_url, timeout=10.0)
@@ -143,7 +153,8 @@ async def analyze_garbage_report(
     description: str,
     latitude: float,
     longitude: float,
-    upvotes: int
+    upvotes: int,
+    image_bytes: Optional[bytes] = None
 ) -> Dict:
     """
     Orchestrate garbage analysis pipeline:
@@ -156,16 +167,19 @@ async def analyze_garbage_report(
             from pathlib import Path
             
             # Convert URL path to file path
-            if image_url.startswith("/uploads/"):
+            # Read image
+            if image_bytes:
+                pass
+            elif image_url.startswith("/uploads/"):
                 file_path = Path("uploads") / image_url.replace("/uploads/", "")
-                image_bytes = None # Initialize image_bytes for local read path
+                if file_path.exists():
+                    with open(file_path, 'rb') as f:
+                        image_bytes = f.read()
             else:
-                # Fallback: try to fetch via HTTP if it's a full URL
                 img_resp = await client.get(image_url, timeout=10.0)
                 if img_resp.status_code != 200:
                     raise Exception("Failed to fetch image")
                 image_bytes = img_resp.content
-                file_path = None
             
             # Read image bytes from file if local
             if file_path and file_path.exists():

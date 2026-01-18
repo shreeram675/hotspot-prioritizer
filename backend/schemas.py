@@ -97,6 +97,10 @@ class ReportResponse(BaseModel):
     ai_severity_score: Optional[float] = None
     ai_severity_level: Optional[str] = None
     
+    # Metadata for explanations
+    location_meta: Optional[str] = None
+    sentiment_meta: Optional[str] = None
+    
     class Config:
         from_attributes = True
 

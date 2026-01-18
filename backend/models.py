@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Enum, Text, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Enum, Text, Float, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoalchemy2 import Geometry
@@ -133,3 +133,12 @@ class Vote(Base):
 
     user = relationship("User", back_populates="votes")
     report = relationship("Report", back_populates="votes")
+
+class StoredImage(Base):
+    __tablename__ = "stored_images"
+    
+    id = Column(String, primary_key=True, index=True)
+    filename = Column(String)
+    content_type = Column(String)
+    data = Column(LargeBinary)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

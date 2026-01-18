@@ -97,6 +97,21 @@ async def create_report(
     
     if report.image_url and predicted_category in ["road_issues", "waste_management"]:
         try:
+            print(f"Processing AI for URL: {report.image_url}")
+            # Fetch image bytes from DB if it is a stored image URL
+            image_bytes = None
+            if "/upload/image/" in report.image_url:
+                image_id = report.image_url.split("/upload/image/")[-1]
+                print(f"Attempting to fetch image_id: {image_id} from DB")
+                from models import StoredImage
+                result = await db.execute(select(StoredImage).where(StoredImage.id == image_id))
+                stored_img = result.scalars().first()
+                if stored_img:
+                    image_bytes = stored_img.data
+                    print(f"Successfully fetched {len(image_bytes)} bytes from DB")
+                else:
+                    print(f"Image ID {image_id} not found in DB")
+
             if predicted_category == "road_issues":
                 from ai_analysis import analyze_pothole_report
                 ai_scores = await analyze_pothole_report(
@@ -104,7 +119,8 @@ async def create_report(
                     description=report.description,
                     latitude=report.latitude,
                     longitude=report.longitude,
-                    upvotes=0
+                    upvotes=0,
+                    image_bytes=image_bytes
                 )
             elif predicted_category == "waste_management":
                 from ai_analysis import analyze_garbage_report
@@ -113,7 +129,8 @@ async def create_report(
                     description=report.description,
                     latitude=report.latitude,
                     longitude=report.longitude,
-                    upvotes=0
+                    upvotes=0,
+                    image_bytes=image_bytes
                 )
             
             # Map AI severity score to enum
@@ -132,7 +149,9 @@ async def create_report(
                 priority = ReportPriority.low
                 
         except Exception as e:
-            print(f"AI Analysis failed: {e}")
+            import traceback
+            print(f"AI Analysis failed for URL {report.image_url}: {e}")
+            traceback.print_exc()
             severity = ReportSeverity.medium
             priority = ReportPriority.medium
 
