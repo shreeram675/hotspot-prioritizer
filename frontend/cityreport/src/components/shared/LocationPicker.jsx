@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -24,6 +24,15 @@ const LocationMarker = ({ position, setPosition }) => {
     return position === null ? null : (
         <Marker position={position}></Marker>
     );
+};
+
+// Component to fly to new center when position props change
+const RecenterMap = ({ center }) => {
+    const map = useMap();
+    useEffect(() => {
+        map.flyTo(center, map.getZoom());
+    }, [center, map]);
+    return null;
 };
 
 const LocationPicker = ({ position, onLocationChange }) => {
@@ -53,9 +62,10 @@ const LocationPicker = ({ position, onLocationChange }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <LocationMarker position={markerPos} setPosition={handleSetPosition} />
+                <RecenterMap center={markerPos} />
             </MapContainer>
             <div className="text-xs text-muted mt-1 text-center">
-                Click on the map to set location
+                Click on the map to pin exact location
             </div>
         </div>
     );

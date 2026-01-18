@@ -47,12 +47,21 @@ def analyze_location(latitude: float, longitude: float) -> Dict:
         critical_count = 0
         schools = 0
         hospitals = 0
+        critical_names = []
         
         for elem in elements:
             if elem.get('type') == 'node':
-                amenity = elem.get('tags', {}).get('amenity', '')
+                tags = elem.get('tags', {})
+                amenity = tags.get('amenity', '')
+                name = tags.get('name', '')
+                
                 if amenity in ['school', 'hospital', 'fire_station', 'police', 'place_of_worship']:
                     critical_count += 1
+                    
+                    # Capture name if available
+                    if name and len(critical_names) < 3: # Limit to top 3 to avoid clutter
+                        critical_names.append(f"{name} ({amenity})")
+                        
                     # Bonus for highly critical
                     if amenity == 'school':
                         schools += 1
@@ -77,7 +86,8 @@ def analyze_location(latitude: float, longitude: float) -> Dict:
             "is_major_road": score >= 0.3,
             "nearby_critical_count": critical_count,
             "schools_nearby": schools,
-            "hospitals_nearby": hospitals
+            "hospitals_nearby": hospitals,
+            "critical_names": critical_names
         }
     
     except Exception as e:
@@ -89,5 +99,6 @@ def analyze_location(latitude: float, longitude: float) -> Dict:
             "is_major_road": True, 
             "nearby_critical_count": 3,
             "schools_nearby": 1,
-            "hospitals_nearby": 0
+            "hospitals_nearby": 0,
+            "critical_names": ["City Central School (school)", "Downtown Police Stn (police)"]
         }

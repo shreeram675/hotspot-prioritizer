@@ -118,7 +118,13 @@ const AIAnalysisCard = ({ report }) => {
                                     const parts = [];
                                     if (meta.schools > 0) parts.push(`🏫 ${meta.schools} School(s) nearby`);
                                     if (meta.hospitals > 0) parts.push(`🏥 ${meta.hospitals} Hospital(s) nearby`);
-                                    if (meta.nearby_critical_count > 0 && parts.length === 0) parts.push(`📍 ${meta.nearby_critical_count} Critical spots nearby`);
+
+                                    // Show specific names if available
+                                    if (meta.critical_names && meta.critical_names.length > 0) {
+                                        parts.push(`📍 Found: ${meta.critical_names.join(", ")}`);
+                                    } else if (meta.nearby_critical_count > 0 && parts.length === 0) {
+                                        parts.push(`📍 ${meta.nearby_critical_count} Critical spots nearby`);
+                                    }
                                     if (meta.is_major_road) parts.push("🛣️ Major Road");
 
                                     if (parts.length > 0) return <span className="text-warning">{parts.join(" • ")}</span>;

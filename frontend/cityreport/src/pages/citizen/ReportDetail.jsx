@@ -116,102 +116,112 @@ const ReportDetail = () => {
       alert("Failed to register vote. Please log in.");
     }
   };
-          </div >
-        </div >
 
-  <div className="report-detail-container">
-    <div className="report-detail-main">
-      <Card className="mb-lg p-none overflow-hidden">
-        <div className="report-image-container">
-          <img
-            src={report.image_url ? (report.image_url.startsWith('/uploads') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
-            alt={report.title}
-            className="report-detail-image"
-          />
-        </div>
-        <div className="p-lg">
-          <h3 className="mb-sm">Description</h3>
-          <p className="report-description text-secondary">
-            {report.description || 'No description provided.'}
-          </p>
-        </div>
-      </Card>
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
 
-      <Card className="mb-lg">
-        <h3 className="mb-md flex items-center gap-sm">
-          <MessageSquare size={20} />
-          Comments
-        </h3>
+    // Placeholder for comment submission logic
+    console.log("Submitting comment:", comment);
+    setComment('');
+    alert("Comments feature coming soon!");
+  };
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="container py-lg">
 
-        <form className="comment-form" onSubmit={handleCommentSubmit}>
-          <textarea
-            className="form-control"
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            rows="3"
-          />
-          <div className="flex justify-end">
-            <Button type="submit" variant="primary" icon={Send}>Post Comment</Button>
-          </div>
-        </form>
-
-        <div className="comments-list mt-lg">
-          {(report.comments && report.comments.length > 0) ? report.comments.map(c => (
-            <div key={c.id} className="comment-item">
-              <div className="comment-header">
-                <span className="font-bold">{c.user || 'Anonymous'}</span>
-                <span className="text-xs text-muted">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
+        <div className="report-detail-container">
+          <div className="report-detail-main">
+            <Card className="mb-lg p-none overflow-hidden">
+              <div className="report-image-container">
+                <img
+                  src={report.image_url ? (report.image_url.startsWith('/uploads') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
+                  alt={report.title}
+                  className="report-detail-image"
+                />
               </div>
-              <p className="comment-text">{c.text || c.content}</p>
-            </div>
-          )) : (
-            <p className="text-muted text-center py-md">No comments yet.</p>
-          )}
+              <div className="p-lg">
+                <h3 className="mb-sm">Description</h3>
+                <p className="report-description text-secondary">
+                  {report.description || 'No description provided.'}
+                </p>
+              </div>
+            </Card>
+
+            <Card className="mb-lg">
+              <h3 className="mb-md flex items-center gap-sm">
+                <MessageSquare size={20} />
+                Comments
+              </h3>
+
+              <form className="comment-form" onSubmit={handleCommentSubmit}>
+                <textarea
+                  className="form-control"
+                  placeholder="Add a comment..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows="3"
+                />
+                <div className="flex justify-end">
+                  <Button type="submit" variant="primary" icon={Send}>Post Comment</Button>
+                </div>
+              </form>
+
+              <div className="comments-list mt-lg">
+                {(report.comments && report.comments.length > 0) ? report.comments.map(c => (
+                  <div key={c.id} className="comment-item">
+                    <div className="comment-header">
+                      <span className="font-bold">{c.user || 'Anonymous'}</span>
+                      <span className="text-xs text-muted">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="comment-text">{c.text || c.content}</p>
+                  </div>
+                )) : (
+                  <p className="text-muted text-center py-md">No comments yet.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          <div className="report-detail-sidebar">
+            <AIAnalysisCard report={report} />
+
+            <Card className="mt-lg">
+              <h3 className="mb-md">Report Details</h3>
+              <div className="info-list">
+                <div className="info-item">
+                  <span className="info-label">Category</span>
+                  <span className="info-value">{report.category?.replace('_', ' ') || 'General'}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Location</span>
+                  <div className="flex items-start gap-xs">
+                    <MapPin size={16} className="text-muted mt-xs" />
+                    <span className="info-value">
+                      {report.location || `${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}`}
+                    </span>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Reported On</span>
+                  <div className="flex items-center gap-xs">
+                    <Calendar size={16} className="text-muted" />
+                    <span className="info-value text-sm">{new Date(report.created_at || report.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Priority</span>
+                  <Badge variant={report.priority === 'high' || report.priority === 'critical' ? 'danger' : 'neutral'}>
+                    {report.priority?.toUpperCase() || 'MEDIUM'}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
-      </Card>
+      </main>
     </div>
-
-    <div className="report-detail-sidebar">
-      <AIAnalysisCard report={report} />
-
-      <Card className="mt-lg">
-        <h3 className="mb-md">Report Details</h3>
-        <div className="info-list">
-          <div className="info-item">
-            <span className="info-label">Category</span>
-            <span className="info-value">{report.category?.replace('_', ' ') || 'General'}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Location</span>
-            <div className="flex items-start gap-xs">
-              <MapPin size={16} className="text-muted mt-xs" />
-              <span className="info-value">
-                {report.location || `${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}`}
-              </span>
-            </div>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Reported On</span>
-            <div className="flex items-center gap-xs">
-              <Calendar size={16} className="text-muted" />
-              <span className="info-value text-sm">{new Date(report.created_at || report.createdAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Priority</span>
-            <Badge variant={report.priority === 'high' || report.priority === 'critical' ? 'danger' : 'neutral'}>
-              {report.priority?.toUpperCase() || 'MEDIUM'}
-            </Badge>
-          </div>
-        </div>
-      </Card>
-    </div>
-  </div>
-
-
-      </main >
-    </div >
   );
 };
 

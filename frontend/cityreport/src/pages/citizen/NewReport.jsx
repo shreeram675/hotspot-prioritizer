@@ -136,7 +136,9 @@ const NewReport = () => {
         },
         (error) => {
           console.error("Error getting location:", error);
+          alert("Could not fetch location. Please check browser permissions.");
         },
+        { enableHighAccuracy: true }
       );
     }
   };
