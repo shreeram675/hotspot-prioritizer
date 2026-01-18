@@ -103,6 +103,10 @@ class Report(Base):
     location_score = Column(Float, nullable=True)
     upvote_score = Column(Float, nullable=True)
     
+    # AI Explanation Metadata
+    location_meta = Column(String, nullable=True) # JSON string: { "schools": 2, "hospitals": 1 }
+    sentiment_meta = Column(String, nullable=True) # JSON string: { "keywords": ["urgent", "danger"] }
+    
     # Final AI Severity Score (0-100)
     ai_severity_score = Column(Float, nullable=True)
     ai_severity_level = Column(String, nullable=True)  # low, medium, high, critical

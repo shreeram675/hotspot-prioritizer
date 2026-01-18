@@ -78,11 +78,12 @@ def predict(input_data: SeverityInput):
         severity_score = max(0.0, min(100.0, severity))
         
         # Map to severity level
-        if severity_score > 75:
+        # Map to severity level
+        if severity_score >= 80:
             severity_level = "critical"
-        elif severity_score > 50:
+        elif severity_score >= 60:
             severity_level = "high"
-        elif severity_score > 25:
+        elif severity_score >= 40:
             severity_level = "medium"
         else:
             severity_level = "low"

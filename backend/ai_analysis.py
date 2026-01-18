@@ -72,6 +72,11 @@ async def analyze_pothole_report(
             )
             sentiment_data = sentiment_resp.json()
             emotion_score = sentiment_data.get('emotion_score', 0.0)
+            sentiment_meta = {
+                "keywords": sentiment_data.get('keywords', []),
+                "sentiment": sentiment_data.get('sentiment', 'UNKNOWN')
+            }
+            import json
             
             # 3. Analyze Location
             location_resp = await client.post(
@@ -81,6 +86,12 @@ async def analyze_pothole_report(
             )
             location_data = location_resp.json()
             location_score = location_data.get('location_score', 0.0)
+            location_meta = {
+                "nearby_critical_count": location_data.get('nearby_critical_count', 0),
+                "schools": location_data.get('schools_nearby', 0),
+                "hospitals": location_data.get('hospitals_nearby', 0),
+                "is_major_road": location_data.get('is_major_road', False)
+            }
             
             # 4. Normalize upvotes
             upvote_score = min(upvotes / 100.0, 1.0)
@@ -106,7 +117,9 @@ async def analyze_pothole_report(
                 "location_score": location_score,
                 "upvote_score": upvote_score,
                 "ai_severity_score": parent_data['severity_score'],
-                "ai_severity_level": parent_data['severity_level']
+                "ai_severity_level": parent_data['severity_level'],
+                "location_meta": json.dumps(location_meta),
+                "sentiment_meta": json.dumps(sentiment_meta)
             }
     
     except Exception as e:
@@ -118,7 +131,9 @@ async def analyze_pothole_report(
             "location_score": 0.0,
             "upvote_score": 0.0,
             "ai_severity_score": 50.0,
-            "ai_severity_level": "medium"
+            "ai_severity_level": "medium",
+            "location_meta": "{}",
+            "sentiment_meta": "{}"
         }
 
 
@@ -180,6 +195,11 @@ async def analyze_garbage_report(
             )
             sentiment_data = sentiment_resp.json()
             emotion_score = sentiment_data.get('emotion_score', 0.0)
+            sentiment_meta = {
+                "keywords": sentiment_data.get('keywords', []),
+                "sentiment": sentiment_data.get('sentiment', 'UNKNOWN')
+            }
+            import json
             
             # 3. Analyze Location
             location_resp = await client.post(
@@ -189,6 +209,12 @@ async def analyze_garbage_report(
             )
             location_data = location_resp.json()
             location_score = location_data.get('location_score', 0.0)
+            location_meta = {
+                "nearby_critical_count": location_data.get('nearby_critical_count', 0),
+                "schools": location_data.get('schools_nearby', 0),
+                "hospitals": location_data.get('hospitals_nearby', 0),
+                "is_major_road": location_data.get('is_major_road', False)
+            }
             
             # 4. Normalize upvotes
             upvote_score = min(upvotes / 100.0, 1.0)
@@ -214,7 +240,9 @@ async def analyze_garbage_report(
                 "location_score": location_score,
                 "upvote_score": upvote_score,
                 "ai_severity_score": parent_data['severity_score'],
-                "ai_severity_level": parent_data['severity_level']
+                "ai_severity_level": parent_data['severity_level'],
+                "location_meta": json.dumps(location_meta),
+                "sentiment_meta": json.dumps(sentiment_meta)
             }
     
     except Exception as e:
@@ -226,5 +254,7 @@ async def analyze_garbage_report(
             "location_score": 0.0,
             "upvote_score": 0.0,
             "ai_severity_score": 50.0,
-            "ai_severity_level": "medium"
+            "ai_severity_level": "medium",
+            "location_meta": "{}",
+            "sentiment_meta": "{}"
         }

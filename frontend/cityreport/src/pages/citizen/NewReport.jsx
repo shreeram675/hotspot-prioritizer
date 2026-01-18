@@ -7,6 +7,7 @@ import Card from '../../components/shared/Card';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import './NewReport.css';
+import LocationPicker from '../../components/shared/LocationPicker';
 
 const CATEGORIES = ["Road Issues", "Waste Management"];
 
@@ -212,36 +213,48 @@ const NewReport = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="location" className="form-label">
+                <label htmlFor="location" className="form-label mb-2 block">
                   Location *
                 </label>
-                <div className="location-input-group">
-                  <div className="input-with-icon flex-1">
-                    <MapPin size={18} className="input-icon" />
+
+                {/* Visual Map Picker */}
+                <LocationPicker
+                  position={
+                    formData.latitude && formData.longitude
+                      ? { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) }
+                      : null
+                  }
+                  onLocationChange={(lat, lng) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      latitude: lat,
+                      longitude: lng,
+                      location: `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+                    }));
+                  }}
+                />
+
+                <div className="location-input-group flex gap-2">
+                  <div className="input-with-icon flex-1 relative">
                     <input
                       id="location"
                       name="location"
                       type="text"
-                      className="form-input"
-                      placeholder="Enter location or use current location"
+                      className="form-input pl-8 w-full"
+                      placeholder="Coordinates will appear here"
                       value={formData.location}
-                      onChange={handleChange}
-                      required
+                      readOnly
                     />
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={getCurrentLocation}
+                    icon={MapPin}
                   >
-                    Use Current
+                    Use GPS
                   </Button>
                 </div>
-                {formData.latitude && formData.longitude && (
-                  <p className="text-xs text-muted mt-xs">
-                    Coordinates: {formData.latitude}, {formData.longitude}
-                  </p>
-                )}
               </div>
 
               <div className="form-group">

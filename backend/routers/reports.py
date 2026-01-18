@@ -156,7 +156,9 @@ async def create_report(
         location_score=ai_scores.get('location_score'),
         upvote_score=ai_scores.get('upvote_score'),
         ai_severity_score=ai_scores.get('ai_severity_score'),
-        ai_severity_level=ai_scores.get('ai_severity_level')
+        ai_severity_level=ai_scores.get('ai_severity_level'),
+        location_meta=ai_scores.get('location_meta', '{}'),
+        sentiment_meta=ai_scores.get('sentiment_meta', '{}')
     )
     
     # TODO: Trigger AI duplicate check here (async task or direct call)
@@ -210,6 +212,8 @@ async def create_report(
         'upvote_score': new_report.upvote_score,
         'ai_severity_score': new_report.ai_severity_score,
         'ai_severity_level': new_report.ai_severity_level,
+        'location_meta': new_report.location_meta,
+        'sentiment_meta': new_report.sentiment_meta,
         'latitude': lat_val,
         'longitude': lon_val,
     }
@@ -315,6 +319,8 @@ async def get_reports(
             'upvote_score': r.upvote_score,
             'ai_severity_score': r.ai_severity_score,
             'ai_severity_level': r.ai_severity_level,
+            'location_meta': r.location_meta,
+            'sentiment_meta': r.sentiment_meta,
         }
         
         # Extract lat/lon from geometry
@@ -363,6 +369,8 @@ async def get_report(report_id: int, db: AsyncSession = Depends(get_db)):
         'upvote_score': report.upvote_score,
         'ai_severity_score': report.ai_severity_score,
         'ai_severity_level': report.ai_severity_level,
+        'location_meta': report.location_meta,
+        'sentiment_meta': report.sentiment_meta,
     }
     
     # Extract lat/lon from geometry

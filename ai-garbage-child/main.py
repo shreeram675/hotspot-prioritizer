@@ -66,22 +66,26 @@ async def analyze_image(image: UploadFile = File(...)):
         }
 
 @app.post("/analyze_sentiment")
-async def analyze_sentiment(input_data: SentimentInput):
-    """
-    Analyze text sentiment using HF API.
-    Returns: emotion_score (0-1)
-    """
     try:
+        # Check for critical keywords
+        text_lower = input_data.text.lower()
+        critical_keywords = ['hazardous', 'toxic', 'chemical', 'medical', 'overflowing', 'smell', 'rat', 'disease', 'urgent']
+        
+        keyword_boost = 0.0
+        found_keywords = []
+        for word in critical_keywords:
+            if word in text_lower:
+                keyword_boost = 0.8
+                found_keywords.append(word)
+
         api_url = garbage_models.get_sentiment_pipeline()
         payload = {"inputs": input_data.text}
         
-        # Call API
         response_json = garbage_models.query_api(api_url, payload)
         
-        # Handle API errors or loading
         if isinstance(response_json, dict) and "error" in response_json:
              logger.warning(f"API Error: {response_json}")
-             emotion_score = 0.5
+             emotion_score = keyword_boost if keyword_boost > 0 else 0.5
              label = "UNKNOWN"
              confidence = 0.0
         else:
@@ -98,16 +102,21 @@ async def analyze_sentiment(input_data: SentimentInput):
                     emotion_score = score
                 else:
                     emotion_score = 0.1
+                
+                if keyword_boost > 0:
+                    emotion_score = max(emotion_score, keyword_boost)
+                    
                 confidence = score
             else:
-                 emotion_score = 0.5
+                 emotion_score = keyword_boost if keyword_boost > 0 else 0.5
                  label = "UNKNOWN"
                  confidence = 0.0
         
         return {
             "emotion_score": round(emotion_score, 3),
             "sentiment": label,
-            "confidence": round(confidence, 3)
+            "confidence": round(confidence, 3),
+            "keywords": found_keywords
         }
     
     except Exception as e:

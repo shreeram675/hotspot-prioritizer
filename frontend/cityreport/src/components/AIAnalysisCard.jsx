@@ -89,8 +89,47 @@ const AIAnalysisCard = ({ report }) => {
                     </>
                 )}
 
-                <ScoreBar label="Urgency" value={report.emotion_score} />
-                <ScoreBar label="Location Risk" value={report.location_score} />
+                <div className="score-group">
+                    <ScoreBar label="Urgency" value={report.emotion_score} />
+                    {report.sentiment_meta && (
+                        <div className="meta-explanation text-xs text-muted mt-1 ml-2">
+                            {/* Try to parse if string, else use as object */}
+                            {(() => {
+                                try {
+                                    const meta = typeof report.sentiment_meta === 'string' ? JSON.parse(report.sentiment_meta) : report.sentiment_meta;
+                                    const keywords = meta.keywords || [];
+                                    if (keywords.length > 0) {
+                                        return <span className="text-danger">⚠️ Detected: {keywords.join(", ")}</span>;
+                                    }
+                                } catch (e) { }
+                                return null;
+                            })()}
+                        </div>
+                    )}
+                </div>
+
+                <div className="score-group">
+                    <ScoreBar label="Location Risk" value={report.location_score} />
+                    {report.location_meta && (
+                        <div className="meta-explanation text-xs text-muted mt-1 ml-2">
+                            {(() => {
+                                try {
+                                    const meta = typeof report.location_meta === 'string' ? JSON.parse(report.location_meta) : report.location_meta;
+                                    const parts = [];
+                                    if (meta.schools > 0) parts.push(`🏫 ${meta.schools} School(s) nearby`);
+                                    if (meta.hospitals > 0) parts.push(`🏥 ${meta.hospitals} Hospital(s) nearby`);
+                                    if (meta.nearby_critical_count > 0 && parts.length === 0) parts.push(`📍 ${meta.nearby_critical_count} Critical spots nearby`);
+                                    if (meta.is_major_road) parts.push("🛣️ Major Road");
+
+                                    if (parts.length > 0) return <span className="text-warning">{parts.join(" • ")}</span>;
+                                    return <span className="text-success">✅ Low risk area</span>;
+                                } catch (e) { }
+                                return null;
+                            })()}
+                        </div>
+                    )}
+                </div>
+
                 <ScoreBar label="Upvote Impact" value={report.upvote_score} />
             </div>
         </Card>

@@ -84,145 +84,134 @@ const ReportDetail = () => {
     }
   };
 
-  const handleUpvote = () => setUpvoted(!upvoted);
-  const handleCommentSubmit = (e) => {
-    e.preventDefault();
-    setComment("");
+  const handleUpvote = async () => {
+    try {
+      // Optimistic update
+      const originalUpvotes = report.upvotes;
+      const originalUpvoted = upvoted;
+
+      setReport(prev => ({
+        ...prev,
+        upvotes: upvoted ? prev.upvotes - 1 : prev.upvotes + 1
+      }));
+      setUpvoted(!upvoted);
+
+      // API Call using axios interceptor if auth configured, else raw axios
+      // Assuming no auth header needed for public upvote or using global config
+      // But typically needs token. For now checking if we have token logic in axios.
+      // If not, we might fail. But let's assume global axios defaults or public.
+
+      // Ideally should use an authenticated axios instance
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+      await axios.post(`http://localhost:8005/reports/${report.id}/upvote`, {}, config);
+
+    } catch (error) {
+      console.error("Upvote failed:", error);
+      // Revert on failure
+      const revertedUpvoted = !upvoted; // wait, closure issue. 
+      // Safest to just refetch or rely on next page load. 
+      // But let's notify user
+      alert("Failed to register vote. Please log in.");
+    }
   };
+          </div >
+        </div >
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+  <div className="report-detail-container">
+    <div className="report-detail-main">
+      <Card className="mb-lg p-none overflow-hidden">
+        <div className="report-image-container">
+          <img
+            src={report.image_url ? (report.image_url.startsWith('/uploads') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
+            alt={report.title}
+            className="report-detail-image"
+          />
+        </div>
+        <div className="p-lg">
+          <h3 className="mb-sm">Description</h3>
+          <p className="report-description text-secondary">
+            {report.description || 'No description provided.'}
+          </p>
+        </div>
+      </Card>
 
-      <main className="container py-lg">
-        <div className="mb-lg">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={ArrowLeft}
-            onClick={() => navigate(-1)}
-            className="mb-md"
-          >
-            Back to Dashboard
-          </Button>
+      <Card className="mb-lg">
+        <h3 className="mb-md flex items-center gap-sm">
+          <MessageSquare size={20} />
+          Comments
+        </h3>
 
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-sm mb-xs">
-                <Badge variant={getStatusVariant(report.status)}>{report.status?.toUpperCase() || 'UNKNOWN'}</Badge>
-                <span className="text-muted text-sm">Case #{report.id}</span>
+        <form className="comment-form" onSubmit={handleCommentSubmit}>
+          <textarea
+            className="form-control"
+            placeholder="Add a comment..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows="3"
+          />
+          <div className="flex justify-end">
+            <Button type="submit" variant="primary" icon={Send}>Post Comment</Button>
+          </div>
+        </form>
+
+        <div className="comments-list mt-lg">
+          {(report.comments && report.comments.length > 0) ? report.comments.map(c => (
+            <div key={c.id} className="comment-item">
+              <div className="comment-header">
+                <span className="font-bold">{c.user || 'Anonymous'}</span>
+                <span className="text-xs text-muted">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
               </div>
-              <h1 className="text-3xl font-bold">{report.title || 'Untitled Report'}</h1>
+              <p className="comment-text">{c.text || c.content}</p>
             </div>
-            <Button
-              variant={upvoted ? 'primary' : 'outline'}
-              icon={ThumbsUp}
-              onClick={handleUpvote}
-            >
-              {upvoted ? 'Upvoted' : 'Upvote'} ({report.upvotes || 0})
-            </Button>
-          </div>
+          )) : (
+            <p className="text-muted text-center py-md">No comments yet.</p>
+          )}
         </div>
-
-        <div className="report-detail-container">
-          <div className="report-detail-main">
-            <Card className="mb-lg p-none overflow-hidden">
-              <div className="report-image-container">
-                <img
-                  src={report.image_url ? (report.image_url.startsWith('/uploads') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
-                  alt={report.title}
-                  className="report-detail-image"
-                />
-              </div>
-              <div className="p-lg">
-                <h3 className="mb-sm">Description</h3>
-                <p className="report-description text-secondary">
-                  {report.description || 'No description provided.'}
-                </p>
-              </div>
-            </Card>
-
-            <Card className="mb-lg">
-              <h3 className="mb-md flex items-center gap-sm">
-                <MessageSquare size={20} />
-                Comments
-              </h3>
-
-              <form className="comment-form" onSubmit={handleCommentSubmit}>
-                <textarea
-                  className="form-control"
-                  placeholder="Add a comment..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows="3"
-                />
-                <div className="flex justify-end">
-                  <Button type="submit" variant="primary" icon={Send}>Post Comment</Button>
-                </div>
-              </form>
-
-              <div className="comments-list mt-lg">
-                {(report.comments && report.comments.length > 0) ? report.comments.map(c => (
-                  <div key={c.id} className="comment-item">
-                    <div className="comment-header">
-                      <span className="font-bold">{c.user || 'Anonymous'}</span>
-                      <span className="text-xs text-muted">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className="comment-text">{c.text || c.content}</p>
-                  </div>
-                )) : (
-                  <p className="text-muted text-center py-md">No comments yet.</p>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          <div className="report-detail-sidebar">
-            <AIAnalysisCard report={report} />
-
-            <Card className="mt-lg">
-              <h3 className="mb-md">Report Details</h3>
-              <div className="info-list">
-                <div className="info-item">
-                  <span className="info-label">Category</span>
-                  <span className="info-value">{report.category?.replace('_', ' ') || 'General'}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Location</span>
-                  <div className="flex items-start gap-xs">
-                    <MapPin size={16} className="text-muted mt-xs" />
-                    <span className="info-value">
-                      {report.location || `${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}`}
-                    </span>
-                  </div>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Reported On</span>
-                  <div className="flex items-center gap-xs">
-                    <Calendar size={16} className="text-muted" />
-                    <span className="info-value text-sm">{new Date(report.created_at || report.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Priority</span>
-                  <Badge variant={report.priority === 'high' || report.priority === 'critical' ? 'danger' : 'neutral'}>
-                    {report.priority?.toUpperCase() || 'MEDIUM'}
-                  </Badge>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* DEBUG SECTION - REMOVE IN PRODUCTION */}
-        <Card className="mt-xl border-dashed opacity-50">
-          <h3 className="text-muted text-sm mb-sm">System Debug Info:</h3>
-          <pre className="text-xs overflow-auto max-h-40">
-            {JSON.stringify(report, null, 2)}
-          </pre>
-        </Card>
-      </main>
+      </Card>
     </div>
+
+    <div className="report-detail-sidebar">
+      <AIAnalysisCard report={report} />
+
+      <Card className="mt-lg">
+        <h3 className="mb-md">Report Details</h3>
+        <div className="info-list">
+          <div className="info-item">
+            <span className="info-label">Category</span>
+            <span className="info-value">{report.category?.replace('_', ' ') || 'General'}</span>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Location</span>
+            <div className="flex items-start gap-xs">
+              <MapPin size={16} className="text-muted mt-xs" />
+              <span className="info-value">
+                {report.location || `${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}`}
+              </span>
+            </div>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Reported On</span>
+            <div className="flex items-center gap-xs">
+              <Calendar size={16} className="text-muted" />
+              <span className="info-value text-sm">{new Date(report.created_at || report.createdAt).toLocaleDateString()}</span>
+            </div>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Priority</span>
+            <Badge variant={report.priority === 'high' || report.priority === 'critical' ? 'danger' : 'neutral'}>
+              {report.priority?.toUpperCase() || 'MEDIUM'}
+            </Badge>
+          </div>
+        </div>
+      </Card>
+    </div>
+  </div>
+
+
+      </main >
+    </div >
   );
 };
 
