@@ -50,28 +50,33 @@ class GarbageModelLoader:
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f"Using device: {self._device}")
         
-        self._model = GarbageSeverityModel(
-            input_size=5,
-            hidden_sizes=[16, 8],
-            output_size=1
-        )
-        
         model_path = Path(model_path)
         if not model_path.exists():
-            logger.warning(f"Model file not found: {model_path}. Using untrained model.")
-        else:
+            logger.warning(f"Model file not found: {model_path}. Using fallback logic in main service.")
+            self._model = None
+            return
+
+        try:
+            self._model = GarbageSeverityModel(
+                input_size=5,
+                hidden_sizes=[16, 8],
+                output_size=1
+            )
+            
             # Load with weights_only=False to allow older pickle files
             # Warning: Only do this with trusted local models!
             state_dict = torch.load(model_path, map_location=self._device, weights_only=False)
             self._model.load_state_dict(state_dict)
             logger.info(f"Model loaded successfully from {model_path}")
-        
-        self._model.to(self._device)
-        self._model.eval()
+            
+            self._model.to(self._device)
+            self._model.eval()
+        except Exception as e:
+            logger.error(f"Failed to load model architecture/weights: {e}")
+            self._model = None
     
     def get_model(self):
-        if self._model is None:
-            raise RuntimeError("Model not loaded. Call load_model() first.")
+        # Return None if not loaded, let main.py handle fallback
         return self._model, self._device
 
 
