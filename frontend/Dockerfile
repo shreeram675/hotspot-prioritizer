@@ -3,11 +3,14 @@ FROM node:18-slim as build
 
 WORKDIR /app
 
-COPY cityreport/package.json cityreport/package-lock.json* ./
-RUN npm install
-RUN npm rebuild esbuild
+# Early copy removed to prevent overwrite issues
+# Dependencies installed after full copy
+
 
 COPY cityreport/ .
+RUN rm -rf node_modules
+RUN npm install
+RUN npm rebuild esbuild
 RUN npm run build
 
 # Serve Stage

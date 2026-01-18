@@ -19,6 +19,12 @@ const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
         created_at
     } = report;
 
+    const getImageUrl = (url) => {
+        if (!url) return 'https://via.placeholder.com/400x200?text=No+Image';
+        if (url.startsWith('/upload')) return `http://localhost:8005${url}`;
+        return url;
+    };
+
     const getStatusVariant = (status) => {
         switch (status.toLowerCase()) {
             case 'resolved': return 'success';
@@ -32,9 +38,13 @@ const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
         <Card className="report-card" padding="none" onClick={() => onClick(id)}>
             <div className="report-image-container">
                 <img
-                    src={image_url ? (image_url.startsWith('/upload') ? `http://localhost:8005${image_url}` : image_url) : (imageUrl ? (imageUrl.startsWith('/upload') ? `http://localhost:8005${imageUrl}` : imageUrl) : 'https://via.placeholder.com/400x200?text=No+Image')}
+                    src={getImageUrl(image_url || imageUrl)}
                     alt={title}
                     className="report-image"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/400x200?text=Load+Error';
+                    }}
                 />
                 <div className="report-category-badge">
                     <Badge variant="neutral">{category}</Badge>

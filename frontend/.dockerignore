@@ -1,4 +1,5 @@
 **/node_modules
+cityreport/node_modules
 **/dist
 **/.git
 **/.DS_Store

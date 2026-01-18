@@ -126,6 +126,12 @@ const ReportDetail = () => {
     setComment('');
     alert("Comments feature coming soon!");
   };
+  const getImageUrl = (url) => {
+    if (!url) return 'https://via.placeholder.com/800x400?text=No+Image+Available';
+    if (url.startsWith('/upload')) return `http://localhost:8005${url}`;
+    return url;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -136,9 +142,13 @@ const ReportDetail = () => {
             <Card className="mb-lg p-none overflow-hidden">
               <div className="report-image-container">
                 <img
-                  src={report.image_url ? (report.image_url.startsWith('/upload') ? `http://localhost:8005${report.image_url}` : report.image_url) : (report.imageUrl || 'https://via.placeholder.com/800x400?text=No+Image+Available')}
+                  src={getImageUrl(report.image_url || report.imageUrl)}
                   alt={report.title}
                   className="report-detail-image"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/800x400?text=Load+Error';
+                  }}
                 />
               </div>
               <div className="p-lg">
