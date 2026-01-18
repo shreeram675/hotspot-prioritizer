@@ -137,11 +137,7 @@ const AIAnalysisCard = ({ report }) => {
                 </div>
 
                 <ScoreBar label="Upvote Impact" value={report.upvote_score} />
-                <div style={{ background: '#f0f0f0', padding: '5px', marginTop: '10px', fontSize: '10px', color: 'red' }}>
-                    DEBUG DATA:<br />
-                    META RAW: {String(report.location_meta)}<br />
-                    TYPE: {typeof report.location_meta}
-                </div>
+
             </div>
         </Card>
     );
