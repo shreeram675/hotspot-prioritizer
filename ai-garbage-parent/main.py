@@ -41,14 +41,14 @@ def predict(input_data: SeverityInput):
         
         # Heuristic fallback if model failed to load
         if model is None:
-             # Simple weighted formula
-             # volume (30%), waste_type (30%), emotion (20%), location (10%), upvotes (10%)
+             # Tuned weighted formula v3 (MAXIMUM SENSITIVITY)
+             # volume (45%), location (35%), waste_type (10%), emotion (5%), upvotes (5%)
              weighted_score = (
-                 (input_data.volume_score * 0.3) +
-                 (input_data.waste_type_score * 0.3) +
-                 (input_data.emotion_score * 0.2) +
-                 (input_data.location_score * 0.1) +
-                 (input_data.upvote_score * 0.1)
+                 (input_data.volume_score * 0.45) +
+                 (input_data.waste_type_score * 0.10) +
+                 (input_data.emotion_score * 0.05) +
+                 (input_data.location_score * 0.35) +
+                 (input_data.upvote_score * 0.05)
              )
              severity = weighted_score * 100.0
              

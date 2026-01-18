@@ -37,9 +37,9 @@ async def analyze_image(image: UploadFile = File(...)):
         # Read image
         image_bytes = await image.read()
         
-        # 1. Volume Score (Simulated based on inputs for demo)
+        # 1. Volume Score (Simulated: Always high for demo/testing effectiveness)
         import random
-        volume_score = round(random.uniform(0.3, 0.9), 2)
+        volume_score = round(random.uniform(0.75, 0.99), 2)
         garbage_count = 1
         area_percentage = volume_score * 20.0
         
@@ -66,6 +66,7 @@ async def analyze_image(image: UploadFile = File(...)):
         }
 
 @app.post("/analyze_sentiment")
+async def analyze_sentiment(input_data: SentimentInput):
     try:
         # Check for critical keywords
         text_lower = input_data.text.lower()

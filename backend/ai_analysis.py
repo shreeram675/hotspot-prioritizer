@@ -230,7 +230,8 @@ async def analyze_garbage_report(
                 "nearby_critical_count": location_data.get('nearby_critical_count', 0),
                 "schools": location_data.get('schools_nearby', 0),
                 "hospitals": location_data.get('hospitals_nearby', 0),
-                "is_major_road": location_data.get('is_major_road', False)
+                "is_major_road": location_data.get('is_major_road', False),
+                "critical_names": location_data.get('critical_names', [])
             }
             
             # 4. Normalize upvotes
