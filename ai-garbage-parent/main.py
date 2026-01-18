@@ -13,11 +13,14 @@ logger = logging.getLogger("garbage-parent")
 app = FastAPI(title="Garbage Severity Prediction Service")
 
 class SeverityInput(BaseModel):
-    volume_score: float = Field(..., ge=0, le=1, description="Volume score from YOLO")
-    waste_type_score: float = Field(..., ge=0, le=1, description="Hazard score from classifier")
-    emotion_score: float = Field(..., ge=0, le=1, description="Urgency from sentiment analysis")
-    location_score: float = Field(..., ge=0, le=1, description="Location context score")
-    upvote_score: float = Field(..., ge=0, le=1, description="Normalized upvote count")
+    # The 7 Hybrid Inputs
+    object_count: float = Field(..., description="1. Count from YOLO")
+    coverage_area: float = Field(..., description="2. Area % from YOLO")
+    dirtiness_score: float = Field(..., description="3. CNN Score")
+    location_multiplier: float = Field(..., description="4. Location Logic")
+    text_severity: float = Field(..., description="5. NLP Score")
+    social_score: float = Field(..., description="6. Upvote Norm")
+    risk_factor: float = Field(..., description="7. Keyword Flag")
 
 class SeverityOutput(BaseModel):
     severity_score: float
@@ -25,52 +28,81 @@ class SeverityOutput(BaseModel):
 
 @app.on_event("startup")
 def startup_event():
-    """Load model at server startup"""
+    """Load model"""
+    # Note: User file is parent_severity_model.pkl (or .py per confusion, but assuming pickle logic)
     model_path = os.getenv(
         "GARBAGE_MODEL_PATH",
-        r"C:\Users\shreeram\OneDrive\Desktop\MAIN EL\hotspot-prioritizer\ai_service\garbage_severity.pth"
+        r"models/parent_severity_model.pkl" 
     )
     garbage_model_loader.load_model(model_path)
-    logger.info("Garbage severity prediction service ready on port 8004")
+    logger.info("Garbage severity prediction service ready (Hybrid Mode)")
 
 @app.post("/predict", response_model=SeverityOutput)
 def predict(input_data: SeverityInput):
-    """Predict severity for a garbage report"""
+    """Predict severity using Hybrid Parent Model"""
     try:
         model, device = garbage_model_loader.get_model()
         
-        # Heuristic fallback if model failed to load
-        if model is None:
-             # Tuned weighted formula v3 (MAXIMUM SENSITIVITY)
-             # volume (45%), location (35%), waste_type (10%), emotion (5%), upvotes (5%)
-             weighted_score = (
-                 (input_data.volume_score * 0.45) +
-                 (input_data.waste_type_score * 0.10) +
-                 (input_data.emotion_score * 0.05) +
-                 (input_data.location_score * 0.35) +
-                 (input_data.upvote_score * 0.05)
-             )
-             severity = weighted_score * 100.0
-             
-             import random
-             if severity > 0:
-                 severity += random.uniform(-5, 5)
-                 
-        else:
-            inputs = [
-                input_data.volume_score,
-                input_data.waste_type_score,
-                input_data.emotion_score,
-                input_data.location_score,
-                input_data.upvote_score
-            ]
-            input_tensor = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
-            input_tensor = input_tensor.to(device)
-            
-            with torch.no_grad():
-                output = model(input_tensor)
-                severity = output.item()
+        # Construct 7-dim vector
+        features = [
+            input_data.object_count,
+            input_data.coverage_area,
+            input_data.dirtiness_score,
+            input_data.location_multiplier,
+            input_data.text_severity,
+            input_data.social_score,
+            input_data.risk_factor
+        ]
         
+        severity = 0.0
+        
+        if model:
+            # Check if model is sklearn/pickle (no tensor needed) or PyTorch
+            try:
+                # Try sklearn style first (predict takes numpy 2d array)
+                import numpy as np
+                input_array = np.array([features])
+                prediction = model.predict(input_array)
+                severity = float(prediction[0])
+            except:
+                # Fallback to PyTorch style
+                input_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(device)
+                with torch.no_grad():
+                    output = model(input_tensor)
+                    severity = output.item()
+        
+        else:
+            # Robust Fallback Formula (AGRESSIVE TUNING)
+            # User Feedback: "scale it a bit larger" for huge garbage
+            s = ( 
+                (input_data.coverage_area * 100 * 0.45) +       # Boosted from 0.3
+                (input_data.dirtiness_score * 100 * 0.35) +     # Boosted from 0.2
+                (input_data.text_severity * 100 * 0.1) + 
+                (input_data.location_multiplier * 100 * 0.2) +
+                (input_data.social_score * 100 * 0.1) +
+                (input_data.risk_factor * 100 * 0.2)            # Boosted from 0.1
+            )
+            # This sum can exceed 100, so we clamp it at the end
+            severity = s
+
+        # --- POST-PREDICTION BOOST ---
+        # "Make the score a bit larger scale it is showing low score for a huge garbage"
+        if input_data.coverage_area > 0.4:
+            # If >40% of image is trash, boost severity by 1.25x
+            severity *= 1.25
+        
+        # Ensure Hazard Level impact is critical
+        if input_data.risk_factor > 0.8:
+             severity = max(severity, 85.0) # Immediate Critical if toxic/medical
+        
+        if input_data.risk_factor > 0.8:
+             severity = max(severity, 85.0) # Immediate Critical if toxic/medical
+        
+        # --- CLEAN OVERRIDE ---
+        # If visually clean (low coverage & low dirtiness), force low score
+        if input_data.coverage_area < 0.1 and input_data.dirtiness_score < 0.15:
+            severity *= 0.1
+            
         severity_score = max(0.0, min(100.0, severity))
         
         if severity_score >= 80:

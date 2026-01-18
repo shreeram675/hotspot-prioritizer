@@ -84,22 +84,56 @@ const AIAnalysisCard = ({ report }) => {
 
                 {isGarbage && (
                     <>
-                        <ScoreBar label="Volume" value={report.garbage_volume_score} />
-                        <ScoreBar label="Hazard Level" value={report.garbage_waste_type_score} />
+                        {/* Hybrid Model Stats Parsing */}
+                        {(() => {
+                            let meta = {};
+                            try {
+                                meta = typeof report.sentiment_meta === 'string' ? JSON.parse(report.sentiment_meta) : report.sentiment_meta || {};
+                            } catch (e) { }
+
+                            const features = meta.features || {};
+
+                            return (
+                                <>
+                                    <ScoreBar label="Coverage Area" value={report.garbage_volume_score} />
+                                    <ScoreBar label="Hazard Level" value={report.garbage_waste_type_score} />
+
+
+                                    {features.dirtiness_score !== undefined && (
+                                        <ScoreBar label="CNN Scene Dirtiness" value={features.dirtiness_score} />
+                                    )}
+
+
+                                </>
+                            );
+                        })()}
                     </>
                 )}
 
                 <div className="score-group">
-                    <ScoreBar label="Urgency" value={report.emotion_score} />
+
                     {report.sentiment_meta && (
                         <div className="meta-explanation text-xs text-muted mt-1 ml-2">
-                            {/* Try to parse if string, else use as object */}
                             {(() => {
                                 try {
                                     const meta = typeof report.sentiment_meta === 'string' ? JSON.parse(report.sentiment_meta) : report.sentiment_meta;
-                                    const keywords = meta.keywords || [];
-                                    if (keywords.length > 0) {
-                                        return <span className="text-danger">⚠️ Detected: {keywords.join(", ")}</span>;
+
+                                    // Handle both Legacy 'keywords' and New 'risks_detected'
+                                    const leaks = meta.risks_detected || meta.keywords || [];
+
+                                    if (leaks.length > 0) {
+                                        return (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-danger font-bold">⚠️ High Risks Detected:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {leaks.map((risk, i) => (
+                                                        <Badge key={i} variant="danger" className="text-[10px] py-0 px-2">
+                                                            {risk.toUpperCase()}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
                                     }
                                 } catch (e) { }
                                 return null;

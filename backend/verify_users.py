@@ -38,8 +38,16 @@ async def check_users():
             try:
                 is_valid = verify_password(expected_pw, user.hashed_password)
                 print(f"Password '{expected_pw}' valid? {is_valid}")
+                
+                if not is_valid and user.email == "shreerampatgar636@gmail.com":
+                    print(f"Reseting password for {user.email} to 'password123'...")
+                    from utils.security import get_password_hash
+                    user.hashed_password = get_password_hash("password123")
+                    await session.commit()
+                    print("Password reset successful!")
+
             except Exception as e:
-                print(f"Error verifying password: {e}")
+                print(f"Error verifying/resetting password: {e}")
             print("-" * 20)
     
     await engine.dispose()
