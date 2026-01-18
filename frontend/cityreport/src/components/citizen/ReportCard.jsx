@@ -12,6 +12,7 @@ const ReportCard = ({ report, onUpvote, onClick }) => {
         category,
         location,
         status,
+        image_url,
         imageUrl,
         upvotes,
         commentsCount,
@@ -30,7 +31,11 @@ const ReportCard = ({ report, onUpvote, onClick }) => {
     return (
         <Card className="report-card" padding="none" onClick={() => onClick(id)}>
             <div className="report-image-container">
-                <img src={imageUrl || 'https://via.placeholder.com/400x200?text=No+Image'} alt={title} className="report-image" />
+                <img
+                    src={image_url ? (image_url.startsWith('/uploads') ? `http://localhost:8005${image_url}` : image_url) : (imageUrl ? (imageUrl.startsWith('/uploads') ? `http://localhost:8005${imageUrl}` : imageUrl) : 'https://via.placeholder.com/400x200?text=No+Image')}
+                    alt={title}
+                    className="report-image"
+                />
                 <div className="report-category-badge">
                     <Badge variant="neutral">{category}</Badge>
                 </div>

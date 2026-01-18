@@ -27,12 +27,31 @@ async def analyze_pothole_report(
     """
     try:
         async with httpx.AsyncClient() as client:
-            # Fetch image
-            img_resp = await client.get(image_url, timeout=10.0)
-            if img_resp.status_code != 200:
-                raise Exception("Failed to fetch image")
+            # Read image from local file system
+            # image_url is like "/uploads/filename.jpg"
+            from pathlib import Path
             
-            image_bytes = img_resp.content
+            # Convert URL path to file path
+            if image_url.startswith("/uploads/"):
+                file_path = Path("uploads") / image_url.replace("/uploads/", "")
+                image_bytes = None # Initialize image_bytes for local read path
+            else:
+                # Fallback: try to fetch via HTTP if it's a full URL
+                img_resp = await client.get(image_url, timeout=10.0)
+                if img_resp.status_code != 200:
+                    raise Exception("Failed to fetch image")
+                image_bytes = img_resp.content
+                file_path = None
+            
+            # Read image bytes from file if local
+            if file_path and file_path.exists():
+                with open(file_path, 'rb') as f:
+                    image_bytes = f.read()
+            elif not file_path:
+                # Already fetched via HTTP above
+                pass
+            else:
+                raise Exception(f"Image file not found: {file_path}")
             
             # 1. Analyze Image (YOLO + Depth)
             files = {'image': ('pothole.jpg', image_bytes, 'image/jpeg')}
@@ -117,14 +136,32 @@ async def analyze_garbage_report(
     """
     try:
         async with httpx.AsyncClient() as client:
-            # Fetch image
-            img_resp = await client.get(image_url, timeout=10.0)
-            if img_resp.status_code != 200:
-                raise Exception("Failed to fetch image")
+            # Read image from local file system
+            from pathlib import Path
             
-            image_bytes = img_resp.content
+            # Convert URL path to file path
+            if image_url.startswith("/uploads/"):
+                file_path = Path("uploads") / image_url.replace("/uploads/", "")
+                image_bytes = None # Initialize image_bytes for local read path
+            else:
+                # Fallback: try to fetch via HTTP if it's a full URL
+                img_resp = await client.get(image_url, timeout=10.0)
+                if img_resp.status_code != 200:
+                    raise Exception("Failed to fetch image")
+                image_bytes = img_resp.content
+                file_path = None
             
-            # 1. Analyze Image (YOLO + Classifier)
+            # Read image bytes from file if local
+            if file_path and file_path.exists():
+                with open(file_path, 'rb') as f:
+                    image_bytes = f.read()
+            elif not file_path:
+                # Already fetched via HTTP above
+                pass
+            else:
+                raise Exception(f"Image file not found: {file_path}")
+            
+            # 1. Analyze Image (YOLO for garbage detection)
             files = {'image': ('garbage.jpg', image_bytes, 'image/jpeg')}
             img_analysis = await client.post(
                 f"{GARBAGE_CHILD_URL}/analyze_image",

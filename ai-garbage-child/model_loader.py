@@ -1,17 +1,16 @@
-import torch
-from ultralytics import YOLO
-from transformers import pipeline
+import requests
 import logging
-from pathlib import Path
+import os
 
 logger = logging.getLogger("garbage-child")
 
+# HuggingFace API configuration
+HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "")
+HF_API_BASE = "https://api-inference.huggingface.co/models"
+
 class GarbageChildModels:
-    """Singleton loader for all garbage child models"""
+    """API-based model inference using HuggingFace Inference API"""
     _instance = None
-    _yolo_model = None
-    _classifier_pipeline = None
-    _sentiment_pipeline = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -19,62 +18,31 @@ class GarbageChildModels:
         return cls._instance
     
     def load_models(self):
-        """Load all child models at startup"""
-        if self._yolo_model is not None:
-            logger.info("Models already loaded")
-            return
-        
-        logger.info("Loading garbage child models...")
-        
-        # 1. YOLO Detection Model for garbage
-        try:
-            # Using a general object detection model
-            # You can replace with a garbage-specific model if available
-            self._yolo_model = YOLO("yolov8m.pt")
-            logger.info("✓ YOLO detection model loaded")
-        except Exception as e:
-            logger.error(f"Failed to load YOLO: {e}")
-            raise
-        
-        # 2. Image Classification for waste type
-        try:
-            # Using zero-shot classification for waste categorization
-            self._classifier_pipeline = pipeline(
-                "zero-shot-classification",
-                model="facebook/bart-large-mnli"
-            )
-            logger.info("✓ Waste classifier loaded")
-        except Exception as e:
-            logger.error(f"Failed to load classifier: {e}")
-            raise
-        
-        # 3. Sentiment Analysis Model (same as pothole)
-        try:
-            self._sentiment_pipeline = pipeline(
-                "sentiment-analysis",
-                model="distilbert-base-uncased-finetuned-sst-2-english"
-            )
-            logger.info("✓ Sentiment analysis model loaded")
-        except Exception as e:
-            logger.error(f"Failed to load sentiment model: {e}")
-            raise
-        
-        logger.info("All garbage child models loaded successfully")
+        """No models to load - using API"""
+        logger.info("Using HuggingFace Inference API (no local models)")
+        logger.info("All garbage child models ready (API mode)")
     
     def get_yolo(self):
-        if self._yolo_model is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._yolo_model
+        """Returns API endpoint for object detection"""
+        return f"{HF_API_BASE}/facebook/detr-resnet-50"
     
     def get_classifier(self):
-        if self._classifier_pipeline is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._classifier_pipeline
+        """Returns API endpoint for classification"""
+        return f"{HF_API_BASE}/facebook/bart-large-mnli"
     
     def get_sentiment_pipeline(self):
-        if self._sentiment_pipeline is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._sentiment_pipeline
+        """Returns API endpoint for sentiment"""
+        return f"{HF_API_BASE}/distilbert-base-uncased-finetuned-sst-2-english"
+    
+    def query_api(self, api_url, data, headers=None):
+        """Query HuggingFace Inference API"""
+        if headers is None:
+            headers = {}
+        if HF_API_TOKEN:
+            headers["Authorization"] = f"Bearer {HF_API_TOKEN}"
+        
+        response = requests.post(api_url, headers=headers, data=data)
+        return response.json()
 
 
 # Global singleton instance

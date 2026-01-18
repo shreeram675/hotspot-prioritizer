@@ -1,17 +1,17 @@
-import torch
-from ultralytics import YOLO
-from transformers import pipeline
+import requests
 import logging
 from pathlib import Path
+import os
 
 logger = logging.getLogger("pothole-child")
 
+# HuggingFace API configuration
+HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "")  # Optional, for higher rate limits
+HF_API_BASE = "https://api-inference.huggingface.co/models"
+
 class PotholeChildModels:
-    """Singleton loader for all pothole child models"""
+    """API-based model inference using HuggingFace Inference API"""
     _instance = None
-    _yolo_model = None
-    _depth_pipeline = None
-    _sentiment_pipeline = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -19,59 +19,31 @@ class PotholeChildModels:
         return cls._instance
     
     def load_models(self):
-        """Load all child models at startup"""
-        if self._yolo_model is not None:
-            logger.info("Models already loaded")
-            return
-        
-        logger.info("Loading pothole child models...")
-        
-        # 1. YOLO Segmentation Model
-        try:
-            self._yolo_model = YOLO("keremberke/yolov8m-pothole-segmentation")
-            logger.info("✓ YOLO segmentation model loaded")
-        except Exception as e:
-            logger.error(f"Failed to load YOLO: {e}")
-            raise
-        
-        # 2. Depth Estimation Model
-        try:
-            self._depth_pipeline = pipeline(
-                "depth-estimation",
-                model="LiheYoung/depth-anything-small-hf"
-            )
-            logger.info("✓ Depth estimation model loaded")
-        except Exception as e:
-            logger.error(f"Failed to load depth model: {e}")
-            raise
-        
-        # 3. Sentiment Analysis Model
-        try:
-            self._sentiment_pipeline = pipeline(
-                "sentiment-analysis",
-                model="distilbert-base-uncased-finetuned-sst-2-english"
-            )
-            logger.info("✓ Sentiment analysis model loaded")
-        except Exception as e:
-            logger.error(f"Failed to load sentiment model: {e}")
-            raise
-        
-        logger.info("All pothole child models loaded successfully")
+        """No models to load - using API"""
+        logger.info("Using HuggingFace Inference API (no local models)")
+        logger.info("All pothole child models ready (API mode)")
     
     def get_yolo(self):
-        if self._yolo_model is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._yolo_model
+        """Returns API endpoint for YOLO"""
+        return f"{HF_API_BASE}/facebook/detr-resnet-50"
     
     def get_depth_pipeline(self):
-        if self._depth_pipeline is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._depth_pipeline
+        """Returns API endpoint for depth estimation"""
+        return f"{HF_API_BASE}/Intel/dpt-large"
     
     def get_sentiment_pipeline(self):
-        if self._sentiment_pipeline is None:
-            raise RuntimeError("Models not loaded. Call load_models() first.")
-        return self._sentiment_pipeline
+        """Returns API endpoint for sentiment analysis"""
+        return f"{HF_API_BASE}/distilbert-base-uncased-finetuned-sst-2-english"
+    
+    def query_api(self, api_url, data, headers=None):
+        """Query HuggingFace Inference API"""
+        if headers is None:
+            headers = {}
+        if HF_API_TOKEN:
+            headers["Authorization"] = f"Bearer {HF_API_TOKEN}"
+        
+        response = requests.post(api_url, headers=headers, data=data)
+        return response.json()
 
 
 # Global singleton instance

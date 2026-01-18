@@ -62,18 +62,26 @@ const NewReport = () => {
         "Waste Management": "waste_management",
       };
 
-      // Upload images if any (using placeholder for now)
+      // Upload images if any
       let imageUrl = null;
       if (images.length > 0) {
-        // NOTE: Image upload to storage service would go here
-        // For now, using a placeholder URL
-        imageUrl = "https://via.placeholder.com/800x600";
+        try {
+          // Upload the first image to backend
+          const formData = new FormData();
+          formData.append('file', images[0].file);
 
-        // TODO: Implement actual image upload
-        // const uploadedUrls = await Promise.all(
-        //     images.map(img => uploadImage(img.file))
-        // );
-        // imageUrl = uploadedUrls[0];
+          const uploadResponse = await api.post('/upload/image', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          imageUrl = uploadResponse.data.image_url;
+          console.log('Image uploaded:', imageUrl);
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          throw new Error('Failed to upload image. Please try again.');
+        }
       }
 
       // Prepare report data
@@ -98,7 +106,7 @@ const NewReport = () => {
 
       // Navigate to the created report or dashboard
       if (response.data.id) {
-        navigate(`/citizen/reports/${response.data.id}`);
+        navigate(`/citizen/report/${response.data.id}`);
       } else {
         navigate("/citizen/dashboard");
       }
@@ -106,8 +114,8 @@ const NewReport = () => {
       console.error("Error submitting report:", err);
       setError(
         err.response?.data?.detail ||
-          err.message ||
-          "Failed to submit report. Please try again.",
+        err.message ||
+        "Failed to submit report. Please try again.",
       );
     } finally {
       setLoading(false);

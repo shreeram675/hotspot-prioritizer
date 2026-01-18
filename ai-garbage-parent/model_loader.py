@@ -60,7 +60,9 @@ class GarbageModelLoader:
         if not model_path.exists():
             logger.warning(f"Model file not found: {model_path}. Using untrained model.")
         else:
-            state_dict = torch.load(model_path, map_location=self._device)
+            # Load with weights_only=False to allow older pickle files
+            # Warning: Only do this with trusted local models!
+            state_dict = torch.load(model_path, map_location=self._device, weights_only=False)
             self._model.load_state_dict(state_dict)
             logger.info(f"Model loaded successfully from {model_path}")
         

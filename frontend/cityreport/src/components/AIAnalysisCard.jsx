@@ -8,8 +8,8 @@ const AIAnalysisCard = ({ report }) => {
         return null; // Don't show if no AI analysis
     }
 
-    const isPothole = report.category === 'pothole';
-    const isGarbage = report.category === 'garbage';
+    const isPothole = report.category === 'pothole' || report.category === 'road_issues';
+    const isGarbage = report.category === 'garbage' || report.category === 'waste_management';
 
     const getSeverityColor = (score) => {
         if (score > 75) return 'danger';
@@ -91,6 +91,7 @@ const AIAnalysisCard = ({ report }) => {
 
                 <ScoreBar label="Urgency" value={report.emotion_score} />
                 <ScoreBar label="Location Risk" value={report.location_score} />
+                <ScoreBar label="Upvote Impact" value={report.upvote_score} />
             </div>
         </Card>
     );
