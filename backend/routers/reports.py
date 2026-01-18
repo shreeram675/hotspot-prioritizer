@@ -454,3 +454,23 @@ async def reopen_report(
     await db.commit()
     await db.refresh(report)
     return report
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a report. Only owner or admin can delete."""
+    result = await db.execute(select(Report).where(Report.id == report_id))
+    report = result.scalars().first()
+    
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    if report.user_id != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this report")
+        
+    await db.delete(report)
+    await db.commit()
+    return None

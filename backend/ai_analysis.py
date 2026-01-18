@@ -34,8 +34,9 @@ async def analyze_pothole_report(
             
             # Convert URL path to file path
             # Read image
+            # Read image
             if image_bytes:
-                pass
+                file_path = None
             elif image_url.startswith("/uploads/"):
                 file_path = Path("uploads") / image_url.replace("/uploads/", "")
                 if file_path.exists():
@@ -168,8 +169,9 @@ async def analyze_garbage_report(
             
             # Convert URL path to file path
             # Read image
+            # Read image
             if image_bytes:
-                pass
+                file_path = None
             elif image_url.startswith("/uploads/"):
                 file_path = Path("uploads") / image_url.replace("/uploads/", "")
                 if file_path.exists():

@@ -1,11 +1,10 @@
-import React from 'react';
-import { MapPin, ThumbsUp, MessageSquare } from 'lucide-react';
+import { MapPin, ThumbsUp, MessageSquare, Trash2 } from 'lucide-react';
 import Card from '../shared/Card';
 import Badge from '../shared/Badge';
 import Button from '../shared/Button';
 import './ReportCard.css';
 
-const ReportCard = ({ report, onUpvote, onClick }) => {
+const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
     const {
         id,
         title,
@@ -72,6 +71,23 @@ const ReportCard = ({ report, onUpvote, onClick }) => {
                             <MessageSquare size={16} />
                             <span>{commentsCount}</span>
                         </div>
+
+                        {isOwner && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="action-btn text-danger hover:text-danger hover:bg-red-50"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm("Are you sure you want to withdraw this report?")) {
+                                        onWithdraw(id);
+                                    }
+                                }}
+                                title="Withdraw Report"
+                            >
+                                <Trash2 size={16} />
+                            </Button>
+                        )}
                     </div>
 
                     <span className="text-xs text-muted">
