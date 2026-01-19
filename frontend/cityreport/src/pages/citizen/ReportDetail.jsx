@@ -8,6 +8,7 @@ import Card from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
 import AIAnalysisCard from '../../components/AIAnalysisCard';
 import './ReportDetail.css';
+import { getImageUrl } from '../../utils/image';
 
 const MOCK_REPORT = {
   id: 1,
@@ -125,11 +126,6 @@ const ReportDetail = () => {
     console.log("Submitting comment:", comment);
     setComment('');
     alert("Comments feature coming soon!");
-  };
-  const getImageUrl = (url) => {
-    if (!url) return 'https://via.placeholder.com/800x400?text=No+Image+Available';
-    if (url.startsWith('/upload')) return `http://localhost:8005${url}`;
-    return url;
   };
 
   return (

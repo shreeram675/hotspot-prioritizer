@@ -3,6 +3,7 @@ import Card from '../shared/Card';
 import Badge from '../shared/Badge';
 import Button from '../shared/Button';
 import './ReportCard.css';
+import { getImageUrl } from '../../utils/image';
 
 const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
     const {
@@ -19,11 +20,6 @@ const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
         created_at
     } = report;
 
-    const getImageUrl = (url) => {
-        if (!url) return 'https://via.placeholder.com/400x200?text=No+Image';
-        if (url.startsWith('/upload')) return `http://localhost:8005${url}`;
-        return url;
-    };
 
     const getStatusVariant = (status) => {
         switch (status.toLowerCase()) {
@@ -101,7 +97,7 @@ const ReportCard = ({ report, onUpvote, onClick, onWithdraw, isOwner }) => {
                     </div>
 
                     <span className="text-xs text-muted">
-                        {new Date(createdAt || created_at).toLocaleDateString()}
+                        {(createdAt || created_at) ? new Date(createdAt || created_at).toLocaleDateString() : 'N/A'}
                     </span>
                 </div>
             </div>
